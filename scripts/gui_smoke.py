@@ -223,8 +223,11 @@ def main():
         def screenshot(name):
             native_frame().save(args.output_dir / name)
 
-        def start_run(command, timeout="", marker=""):
-            click("run")
+        def start_run(command, timeout="", marker="", shortcut=False):
+            if shortcut:
+                key("r", ("Control_L", "Shift_L"))
+            else:
+                click("run")
             field("command", command)
             field("timeout", timeout)
             field("idle", "")
@@ -241,7 +244,10 @@ def main():
             config_dir = scratch / "config/btop"
             config_dir.mkdir(parents=True, exist_ok=True)
             (config_dir / "btop.conf").write_text('shown_boxes = "cpu mem"\ngraph_symbol = "braille"\nupdate_ms = 500\n')
-            index = start_run(shlex.quote(str(args.btop_binary)) + " --force-utf")
+            help_text = subprocess.run([str(args.btop_binary), "--help"], env=env, capture_output=True, text=True, timeout=5, check=True).stdout
+            utf_flag = next((flag for flag in ("--force-utf", "--utf-force") if flag in help_text), None)
+            assert utf_flag, "btop --help advertises no supported force-UTF option"
+            index = start_run(shlex.quote(str(args.btop_binary)) + " " + utf_flag, shortcut=args.btop_only)
             wait(lambda: event_after(index, lambda e: e["event"] == "output" and any('\u2800' <= c <= '\u28ff' for c in e["text"])), "real btop emits Braille plot glyphs")
             time.sleep(2)
             screenshot("btop-utf.png")
