@@ -527,6 +527,13 @@ impl App {
             }
         }
     }
+    fn modal_open(&self) -> bool {
+        self.settings
+            || self.run_open
+            || self.history_open
+            || self.append_open
+            || self.error.is_some()
+    }
     fn shortcuts(&mut self, ctx: &egui::Context) {
         if self.options.screenshot.is_some()
             && ctx.input_mut(|i| {
@@ -1113,7 +1120,7 @@ impl App {
                     ui.label(theme::help("Ctrl+C interrupts a running command."));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         launch = track(&mut self.qa_rects, "start_run", ui.add(theme::primary("Run command"))).clicked();
-                        cancel = ui.add(egui::Button::new("Cancel").frame(false)).clicked();
+                        cancel = track(&mut self.qa_rects, "run_cancel", ui.add(egui::Button::new("Cancel").frame(false))).clicked();
                     });
                 });
             });
@@ -1448,8 +1455,13 @@ impl App {
                     p.session.resize(rows, cols);
                     p.last_size = (rows, cols);
                 }
-                let (rect, response) = ui.allocate_exact_size(
+                let (rect, _) = ui.allocate_exact_size(
                     Vec2::new(cols as f32 * cell.x, rows as f32 * cell.y),
+                    Sense::hover(),
+                );
+                let response = ui.interact(
+                    rect,
+                    terminal_input_id(p.session.id),
                     Sense::click_and_drag(),
                 );
                 self.qa_rects.insert("terminal".into(), rect);
@@ -1472,11 +1484,16 @@ impl App {
                     || self.history_open
                     || self.append_open
                     || self.error.is_some();
+                if !modal && !ctx.memory(|memory| memory.any_popup_open()) {
+                    focus_terminal(ctx, response.id);
+                }
                 let mouse_mode = view.mode.intersects(TermMode::MOUSE_MODE)
                     && !ctx.input(|i| i.modifiers.shift)
                     && !modal;
                 if response.clicked() {
-                    response.request_focus();
+                    if !modal {
+                        focus_terminal(ctx, response.id);
+                    }
                     p.selection = None;
                     self.last_interaction = Instant::now();
                 }
@@ -1671,7 +1688,7 @@ impl App {
                     }
                     ctx.request_repaint_after(Duration::from_millis(350));
                 }
-                if !modal && (response.has_focus() || !ctx.wants_keyboard_input()) {
+                if !modal && !ctx.memory(|memory| memory.any_popup_open()) && response.has_focus() {
                     let events = terminal_events(ctx.input(|i| i.events.clone()));
                     for event in events {
                         match event {
@@ -1754,6 +1771,14 @@ impl eframe::App for App {
             self.options.demo = false;
         }
         self.shortcuts(ctx);
+        if !self.modal_open()
+            && !ctx.memory(|memory| memory.any_popup_open())
+            && let Some(pane) = self.panes.get(self.active)
+        {
+            // Reclaim focus before toolbar widgets can consume Enter/Space. Dialogs
+            // retain their own focus and normal Tab navigation while they are open.
+            focus_terminal(ctx, terminal_input_id(pane.session.id));
+        }
         self.toolbar(ctx);
         self.terminal(ctx);
         self.dialogs(ctx);
@@ -1790,7 +1815,9 @@ impl eframe::App for App {
                 .iter()
                 .map(|(name, r)| (name.clone(), [r.min.x, r.min.y, r.max.x, r.max.y]))
                 .collect();
-            let value = serde_json::json!({"ui":rects,"scale":ctx.pixels_per_point()}).to_string();
+            let value = serde_json::json!({"ui":rects,"scale":ctx.pixels_per_point(),
+                "run_command":self.form.command,"run_timeout":self.form.timeout,"active_tab":self.active})
+            .to_string();
             if value != self.last_qa {
                 if let Some(log) = &mut self.event_log {
                     let _ = writeln!(log, "{value}");
@@ -1830,6 +1857,33 @@ impl eframe::App for App {
                 ctx.request_repaint_after(Duration::from_millis(100));
             }
         }
+    }
+}
+
+fn terminal_input_id(session: u64) -> egui::Id {
+    egui::Id::new(("terminal_input", session))
+}
+
+fn focus_terminal(ctx: &egui::Context, id: egui::Id) {
+    let changed = ctx.memory_mut(|memory| {
+        let changed = memory.focused() != Some(id);
+        if changed {
+            memory.request_focus(id);
+        }
+        memory.set_focus_lock_filter(
+            id,
+            egui::EventFilter {
+                tab: true,
+                horizontal_arrows: true,
+                vertical_arrows: true,
+                escape: true,
+            },
+        );
+        changed
+    });
+    if changed {
+        // egui installs a focus filter once the widget also had focus last frame.
+        ctx.request_repaint();
     }
 }
 
@@ -2018,6 +2072,52 @@ pub fn mouse_bytes(button: u8, row: usize, col: usize, pressed: bool, mode: Term
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn terminal_focus_survives_navigation_and_escape_across_frames() {
+        let ctx = egui::Context::default();
+        let id = terminal_input_id(42);
+        let frame = |events| {
+            let _ = ctx.run(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |ctx| {
+                    focus_terminal(ctx, id);
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        let _ = ui.button("Another focusable control");
+                        ui.interact(
+                            Rect::from_min_size(Pos2::new(0., 40.), Vec2::splat(200.)),
+                            id,
+                            Sense::click_and_drag(),
+                        );
+                        focus_terminal(ctx, id);
+                    });
+                },
+            );
+            assert_eq!(ctx.memory(|memory| memory.focused()), Some(id));
+        };
+        frame(vec![]);
+        frame(vec![]);
+        for (key, modifiers) in [
+            (Key::Tab, egui::Modifiers::NONE),
+            (Key::Tab, egui::Modifiers::SHIFT),
+            (Key::ArrowLeft, egui::Modifiers::NONE),
+            (Key::ArrowRight, egui::Modifiers::NONE),
+            (Key::ArrowUp, egui::Modifiers::NONE),
+            (Key::ArrowDown, egui::Modifiers::NONE),
+            (Key::Escape, egui::Modifiers::NONE),
+        ] {
+            frame(vec![egui::Event::Key {
+                key,
+                physical_key: Some(key),
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }]);
+        }
+    }
 
     #[test]
     fn run_durations_use_selected_units_and_preserve_explicit_durations() {

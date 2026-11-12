@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import time
 
-from PIL import Image
+from PIL import Image, ImageChops
 from Xlib import X, XK, display
 from Xlib import error as xerror
 from Xlib.ext import xtest
@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--kwin-input-helper",type=Path)
     parser.add_argument("--run-input-only", action="store_true")
+    parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--append-only", action="store_true")
     parser.add_argument("--pager-only", action="store_true")
     parser.add_argument("--btop-binary", type=Path)
@@ -229,6 +230,7 @@ def main():
             else:
                 click("run")
             field("command", command)
+            wait(lambda: ui_state().get("run_command") == command, "complete command text reaches Run editor")
             field("timeout", timeout)
             field("idle", "")
             field("marker", marker)
@@ -237,6 +239,48 @@ def main():
             click("start_run")
             wait(lambda: event_after(index, lambda e: e["event"] == "started" and e["managed"]), "managed process started")
             return index
+
+        def check_terminal_focus():
+            import shlex
+            expected = b'\t\x1b[Z\x1b[D\x1b[C\x1b[A\x1b[Babc'
+            script = ("import os,tty;tty.setraw(0);print('FOCUS_READY',flush=True);"
+                      f"data=b''.join(os.read(0,1) for _ in range({len(expected)}));"
+                      "print('FOCUS_BYTES='+data.hex(),flush=True)")
+            index = start_run('python3 -u -c ' + shlex.quote(script), shortcut=True)
+            wait(lambda: 'FOCUS_READY' in output_since(index), 'raw focus test ready')
+            click('terminal', .2, .2)
+            key('Tab')
+            key('Tab', ('Shift_L',))
+            for arrow in ('Left', 'Right', 'Up', 'Down'):
+                key(arrow)
+            text('abc')
+            wait(lambda: 'FOCUS_BYTES='+expected.hex() in output_since(index),
+                 'Tab, Shift+Tab and arrows reach the child without needing Escape', timeout=5)
+            wait(lambda: event_after(index, lambda e:e['event']=='exited' and e['code']==0), 'focus reader exits')
+            results['gui_terminal_navigation_keeps_keyboard_focus'] = 'passed'
+            key('w', ('Control_L', 'Shift_L'))
+            click('tab_0')
+            index = len(records())
+            text("printf 'FOCUS_TAB_CLICK_OK\\n'\n")
+            wait(lambda: event_after(index, lambda e:e['event']=='command_ended' and e['code']==0),
+                 'typing after clicking a tab works without Escape')
+            assert 'FOCUS_TAB_CLICK_OK\r\n' in output_since(index)
+            results['gui_tab_click_restores_terminal_typing'] = 'passed'
+            click('run')
+            field('command', "printf 'DIALOG_MUST_NOT_RUN'")
+            key('Tab')
+            text('0.5')
+            wait(lambda: ui_state().get('run_timeout') == '0.5', 'Tab moves between dialog fields')
+            assert ui_state()['run_command'] == "printf 'DIALOG_MUST_NOT_RUN'"
+            results['gui_modal_keeps_text_and_tab_navigation'] = 'passed'
+            click('run_cancel')
+            wait(lambda: 'command' not in ui_state().get('ui', {}), 'mouse cancel closes dialog')
+            index = len(records())
+            text("printf 'FOCUS_CANCEL_OK\\n'\n")
+            wait(lambda: event_after(index, lambda e:e['event']=='command_ended' and e['code']==0),
+                 'typing resumes after cancel without terminal click or Escape')
+            assert not event_after(index, lambda e:e['event']=='command_started' and 'DIALOG_MUST_NOT_RUN' in e['command'])
+            results['gui_modal_cancel_restores_terminal_typing'] = 'passed'
 
         def check_btop():
             import shlex
@@ -425,6 +469,9 @@ def main():
             if expected:
                 assert gpu['device_type'] == expected, gpu
             results['integrated_gpu_rendering' if args.gpu == 'integrated' else 'explicit_renderer'] = gpu
+            if args.focus_only:
+                check_terminal_focus()
+                return
             if args.append_only:
                 check_appending()
                 return
@@ -438,6 +485,7 @@ def main():
                 check_pager()
                 return
             if not args.run_input_only:
+                check_terminal_focus()
                 check_appending()
                 check_pager()
             initial_scale = ui_state()["scale"]
@@ -517,11 +565,25 @@ def main():
             crop=(round(rect[0]*scale),round(rect[1]*scale),round(rect[2]*scale),round(rect[3]*scale))
             frames=[frame().crop(crop)]
             key("Home")
-            for _ in range(9):
+            # Shell redraw and Xwayland presentation are asynchronous. A 225 ms
+            # window can end on the first intermediate frame, before the target
+            # is presented. Sample the complete transition; retain both assertions.
+            deadline = time.monotonic() + 1.2
+            while time.monotonic() < deadline:
                 frames.append(frame().crop(crop));time.sleep(.025)
             frames[0].save(args.output_dir / "cursor-motion.gif",save_all=True,append_images=frames[1:],duration=40,loop=0)
             def cursor_x(image):
-                xs=[x for y in range(image.height) for x in range(image.width) if (lambda c:c[1]>c[0]*1.3 and c[2]>c[0]*1.3 and c[1]>80)(image.getpixel((x,y)))]
+                red, green, blue = image.convert('RGB').split()
+                threshold = red.point(lambda value: min(255, int(value * 1.3)))
+                nonzero = lambda value: 255 if value > 0 else 0
+                mask = ImageChops.multiply(ImageChops.subtract(green, threshold).point(nonzero),
+                                          ImageChops.subtract(blue, threshold).point(nonzero))
+                mask = ImageChops.multiply(mask, green.point(lambda value: 255 if value > 80 else 0))
+                bounds = mask.getbbox()
+                if not bounds:
+                    return None
+                cropped = mask.crop(bounds)
+                xs = [bounds[0] + index % cropped.width for index, value in enumerate(cropped.getdata()) if value]
                 return sum(xs)/len(xs) if xs else None
             positions=[x for x in map(cursor_x,frames) if x is not None]
             assert len(positions)>=3 and max(positions)-min(positions)>10,positions
@@ -660,10 +722,12 @@ def main():
             wait(lambda: window.get_geometry().width == 640 and window.get_geometry().height == 420, "minimum window size")
             wait(header_fits, "compact header controls remain reachable")
             def active_tab_visible():
-                state = ui_state().get("ui", {})
-                if "tab_6" not in state or "tab_strip" not in state:
+                snapshot = ui_state()
+                state = snapshot.get("ui", {})
+                current = 'tab_' + str(snapshot.get('active_tab'))
+                if current not in state or "tab_strip" not in state:
                     return False
-                tab, strip = state["tab_6"], state["tab_strip"]
+                tab, strip = state[current], state["tab_strip"]
                 return strip[0] - 1 <= tab[0] and tab[2] <= strip[2] + 1
             wait(active_tab_visible, "resizing keeps the active tab fully visible")
             click("settings")
