@@ -2928,6 +2928,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "toml",
+ "ttf-parser",
  "vte",
 ]
 

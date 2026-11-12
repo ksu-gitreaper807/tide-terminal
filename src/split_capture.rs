@@ -28,6 +28,7 @@ struct Pending {
     combined: Observer,
     text: [Observer; 2],
     done: [bool; 2],
+    statuses: [Option<i32>; 2],
     cancelled: bool,
 }
 pub struct SplitCapture {
@@ -43,6 +44,7 @@ pub struct SplitCapture {
     shell: String,
     private: bool,
     managed: bool,
+    metadata: Observer,
 }
 impl SplitCapture {
     pub fn new(command: Option<String>, cwd: PathBuf, shell: String, private: bool) -> Self {
@@ -65,6 +67,7 @@ impl SplitCapture {
             shell,
             private,
             managed,
+            metadata: Observer::default(),
         };
         if let Some(command) = command {
             for channel in 0..2 {
@@ -74,6 +77,9 @@ impl SplitCapture {
             }
         }
         this
+    }
+    pub fn require_integration_token(&mut self, token: Option<String>) {
+        self.metadata = Observer::with_integration_token(token);
     }
     pub fn select(&mut self, channel: Channel) {
         self.selected = channel as usize;
@@ -113,6 +119,7 @@ impl SplitCapture {
             combined: Observer::with_text_limit(CAPTURE_LIMIT),
             text: std::array::from_fn(|_| Observer::with_text_limit(CAPTURE_LIMIT)),
             done: [false; 2],
+            statuses: [None; 2],
             cancelled: false,
         });
         if !command.is_empty() && run.record.lock().unwrap().command.is_empty() {
@@ -123,7 +130,7 @@ impl SplitCapture {
         }
         self.ready.store(false, Ordering::Release);
     }
-    fn end(&mut self, code: i32, cancel: bool) {
+    fn end(&mut self, code: Option<i32>, cancel: bool) {
         let Some(id) = self.inputs[self.selected].active.take() else {
             return;
         };
@@ -131,6 +138,7 @@ impl SplitCapture {
             return;
         };
         run.done[self.selected] = true;
+        run.statuses[self.selected] = code;
         run.cancelled |= cancel;
         if run.done.iter().all(|done| *done) {
             let run = self.runs.remove(&id).unwrap();
@@ -147,7 +155,10 @@ impl SplitCapture {
                     stdout_truncated,
                     stderr_truncated,
                 });
-                record.exit_code = Some(code);
+                record.exit_code = Some(match run.statuses {
+                    [Some(a), Some(b)] if a == b => a,
+                    _ => -1, // Completed, but status is unknown or channels disagree.
+                });
                 if id >= self.published {
                     self.published = id;
                     *self.completed.lock().unwrap() = Some(record.clone());
@@ -162,7 +173,7 @@ impl SplitCapture {
     pub fn finish(&mut self, code: i32) {
         for channel in 0..2 {
             self.selected = channel;
-            self.end(code, false);
+            self.end(self.managed.then_some(code), false);
         }
     }
     fn text(&mut self, f: impl Fn(&mut Observer)) {
@@ -194,14 +205,10 @@ impl Perform for SplitCapture {
         self.text(|text| text.csi_dispatch(p, i, ignore, a));
     }
     fn osc_dispatch(&mut self, params: &[&[u8]], bell: bool) {
-        if !self.managed && params == [b"777".as_slice(), b"tide", b"append"] {
-            self.end(0, true);
-            return;
-        }
-        let mut observer = Observer::default();
-        observer.osc_dispatch(params, bell);
-        for marker in observer.markers {
+        self.metadata.osc_dispatch(params, bell);
+        for marker in std::mem::take(&mut self.metadata.markers) {
             match marker {
+                Marker::Append if !self.managed => self.end(None, true),
                 Marker::Start if !self.managed => self.start(),
                 Marker::End(code) if !self.managed => self.end(code, false),
                 Marker::Command(command) if !self.managed => {

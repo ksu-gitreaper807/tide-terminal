@@ -20,6 +20,7 @@ from Xlib.ext import xtest
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--gpu", choices=["integrated", "discrete", "auto", "software"], default="integrated")
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
@@ -43,10 +44,10 @@ def main():
         log = scratch / "events.jsonl"
         env = os.environ.copy()
         env.pop("WAYLAND_DISPLAY", None)
-        env.update(XDG_CONFIG_HOME=str(scratch / "config"),
+        env.update(TIDE_CONFIG=str(scratch / ".tide.toml"), XDG_CONFIG_HOME=str(scratch / "config"),
                    XDG_DATA_HOME=str(scratch / "data"),
                    XDG_CACHE_HOME=str(scratch / "cache"))
-        process = subprocess.Popen([str(args.binary), "gui", "--qa", "--clean", "--shell", "/bin/bash",
+        process = subprocess.Popen([str(args.binary), "gui", "--gpu", args.gpu, "--qa", "--clean", "--shell", "/bin/bash",
                                     "--event-log", str(log), "--screenshot",str(args.output_dir / "canvas.png")], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         d = display.Display()
         root = d.screen().root
@@ -373,8 +374,10 @@ def main():
         try:
             wait(lambda: event_after(0, lambda e: e["event"] == "prompt"), "initial shell prompt")
             gpu=wait(lambda:next((r['gpu'] for r in records() if 'gpu' in r),None),'actual GPU adapter')
-            assert gpu['device_type']=='IntegratedGpu',gpu
-            results['integrated_gpu_rendering']=gpu
+            expected = {"integrated": "IntegratedGpu", "discrete": "DiscreteGpu", "software": "Cpu"}.get(args.gpu)
+            if expected:
+                assert gpu['device_type'] == expected, gpu
+            results['integrated_gpu_rendering' if args.gpu == 'integrated' else 'explicit_renderer'] = gpu
             if args.append_only:
                 check_appending()
                 return
@@ -553,7 +556,18 @@ def main():
             click("opacity", .15)
             click("save_settings")
             import tomllib
-            config = tomllib.loads((scratch / "config/tide-terminal/config.toml").read_text())
+            config_path = scratch / ".tide.toml"
+            config = tomllib.loads(config_path.read_text())
+            assert config_path.stat().st_mode & 0o777 == 0o600
+            assert config["gpu"] == args.gpu, config
+            assert config["font_file"] == "", config
+            results["dotfile_preferences_and_private_permissions"] = "passed"
+            font_path = Path(__file__).resolve().parent.parent / "assets/fonts/DejaVuSans.ttf"
+            click("font_file")
+            text(str(font_path))
+            click("save_settings")
+            assert tomllib.loads(config_path.read_text())["font_file"] == str(font_path)
+            results["font_file_preference_saved_for_restart"] = "passed"
             screenshot("appearance.png")
             assert .3 <= config["opacity"] < .9, config
             results["live_opacity_and_saved_settings"] = "passed"

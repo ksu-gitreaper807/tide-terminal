@@ -10,22 +10,23 @@ if [[ ${TIDE_SPLIT_CAPTURE-} == 1 ]]; then exec 2>"$TIDE_STDERR_TTY"; fi
 if [[ ${TIDE_SPLIT_CAPTURE-} == 1 ]]; then exec {__tide_emit_fd}>&1; fi
 __tide_emit() {
     if [[ ${TIDE_SPLIT_CAPTURE-} == 1 ]]; then
-        printf "$@" >&"$__tide_emit_fd"
-        printf "$@" >&2
+        printf '\033]777;tide;v1;%s;%s;%s\007' "$TIDE_MARKER_TOKEN" "$1" "${2-}" >&"$__tide_emit_fd"
+        printf '\033]777;tide;v1;%s;%s;%s\007' "$TIDE_MARKER_TOKEN" "$1" "${2-}" >&2
     else
-        printf "$@"
+        printf '\033]777;tide;v1;%s;%s;%s\007' "$TIDE_MARKER_TOKEN" "$1" "${2-}"
     fi
 }
 T_:() { "$TIDE_EXE" timer "$@"; }
 A_:() {
-    __tide_emit '\033]777;tide;append\007'
+    __tide_emit append
     "$TIDE_EXE" append "$@"
 }
 __tide_before=''
 __tide_prompt() {
     local __tide_status=$?
-    __tide_emit '\033]133;D;%s\007\033]133;A\007' "$__tide_status"
-    __tide_emit '\033]777;tide;cwd;%s\007' "$(printf '%s' "$PWD" | base64 | tr -d '\n')"
+    __tide_emit end "$__tide_status"
+    __tide_emit prompt
+    __tide_emit cwd "$(printf '%s' "$PWD" | base64 | tr -d '\n')"
     __tide_before=$(HISTTIMEFORMAT= builtin history 1)
     return "$__tide_status"
 }
@@ -34,16 +35,16 @@ __tide_preexec() {
     __tide_current=$(HISTTIMEFORMAT= builtin history 1)
     if [[ $__tide_current != "$__tide_before" && -n $__tide_current ]]; then
         __tide_cmd=${__tide_current#*[0-9]  }
-        __tide_emit '\033]777;tide;command;%s\007' "$(printf '%s' "$__tide_cmd" | base64 | tr -d '\n')"
+        __tide_emit command "$(printf '%s' "$__tide_cmd" | base64 | tr -d '\n')"
     fi
-    __tide_emit '\033]133;C\007'
+    __tide_emit start
 }
 if declare -F blehook >/dev/null; then
     __tide_ble_preexec() {
         if [[ $1 != ' '* ]]; then
-            __tide_emit '\033]777;tide;command;%s\007' "$(printf '%s' "$1" | base64 | tr -d '\n')"
+            __tide_emit command "$(printf '%s' "$1" | base64 | tr -d '\n')"
         fi
-        __tide_emit '\033]133;C\007'
+        __tide_emit start
     }
     blehook PREEXEC+=__tide_ble_preexec
     blehook PRECMD+=__tide_prompt

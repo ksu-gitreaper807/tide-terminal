@@ -8,7 +8,8 @@ const LIMIT: usize = 16_384;
 pub enum Marker {
     Prompt,
     Start,
-    End(i32),
+    End(Option<i32>),
+    Append,
     Command(String),
     Cwd(String),
     Input(String),
@@ -16,6 +17,8 @@ pub enum Marker {
 
 #[derive(Default)]
 pub struct Observer {
+    integration_token: Option<String>,
+    require_token: bool,
     text_limit: Option<usize>,
     discarded: bool,
     line: Vec<char>,
@@ -29,6 +32,16 @@ pub struct Observer {
 }
 
 impl Observer {
+    /// Production sessions accept automation metadata only from their own hooks.
+    /// This prevents accidental/remote marker spoofing, not hostile local children
+    /// that can read their inherited token. Default remains a protocol-test parser.
+    pub fn with_integration_token(token: Option<String>) -> Self {
+        Self {
+            integration_token: token,
+            require_token: true,
+            ..Self::default()
+        }
+    }
     pub fn with_text_limit(limit: usize) -> Self {
         Self {
             text_limit: Some(limit.max(LIMIT)),
@@ -180,57 +193,25 @@ impl Perform for Observer {
         }
     }
     fn osc_dispatch(&mut self, params: &[&[u8]], _: bool) {
-        let get = |i: usize| {
-            params
-                .get(i)
-                .and_then(|b| std::str::from_utf8(b).ok())
-                .unwrap_or("")
-        };
-        match get(0) {
-            "133" => match get(1) {
-                "A" => self.markers.push(Marker::Prompt),
-                "C" => {
-                    for param in params.iter().skip(2) {
-                        if let Ok(s) = std::str::from_utf8(param)
-                            && let Some(encoded) = s.strip_prefix("cmdline_url=")
-                            && let Some(command) = percent_decode(encoded)
-                        {
-                            self.markers.push(Marker::Command(command));
-                        }
-                    }
-                    self.markers.push(Marker::Start);
-                }
-                "D" => self.markers.push(Marker::End(get(2).parse().unwrap_or(0))),
-                _ => {}
-            },
-            "777" if get(1) == "tide" => match get(2) {
-                "command" if get(3).len() <= LIMIT => {
-                    if let Ok(bytes) = STANDARD.decode(get(3))
-                        && let Ok(s) = String::from_utf8(bytes)
-                    {
-                        self.markers.push(Marker::Command(s));
-                    }
-                }
-                "cwd" if get(3).len() <= LIMIT => {
-                    if let Ok(bytes) = STANDARD.decode(get(3))
-                        && let Ok(s) = String::from_utf8(bytes)
-                    {
-                        self.markers.push(Marker::Cwd(s));
-                    }
-                }
-                "input" => self.markers.push(Marker::Input("Input requested".into())),
-                _ => {}
-            },
-            "7" => {
-                if let Some((_, path)) = get(1)
-                    .strip_prefix("file://")
-                    .and_then(|s| s.split_once('/'))
-                    && let Some(path) = percent_decode(&format!("/{path}"))
-                {
-                    self.markers.push(Marker::Cwd(path));
-                }
+        if params.starts_with(&[b"777", b"tide", b"v1"]) {
+            if params.len() != 6
+                || self.integration_token.as_deref().map(str::as_bytes) != params.get(3).copied()
+            {
+                return;
             }
-            _ => {}
+            match params[4] {
+                b"prompt" if params[5].is_empty() => self.markers.push(Marker::Prompt),
+                b"start" if params[5].is_empty() => self.markers.push(Marker::Start),
+                b"end" => self.markers.push(Marker::End(exit_status(
+                    std::str::from_utf8(params[5]).unwrap_or(""),
+                ))),
+                b"append" if params[5].is_empty() => self.markers.push(Marker::Append),
+                b"command" | b"cwd" => self.metadata(&[b"777", b"tide", params[4], params[5]]),
+                _ => {}
+            }
+        } else if !self.require_token || params.starts_with(&[b"777", b"tide", b"input"]) {
+            // Unauthenticated input requests remain advisory only; they never set status/cwd.
+            self.metadata(params);
         }
     }
     fn csi_dispatch(&mut self, params: &Params, intermediates: &[u8], _: bool, action: char) {
@@ -304,6 +285,15 @@ impl ProtocolGuard {
                     || (self.string_escape && b == b'\\')
                     || matches!(b, 0x18 | 0x1a);
                 self.count += 1;
+                // OSC must not normalize embedded controls into valid capability
+                // bytes/fields before marker validation. Real terminators and ST
+                // remain allowed; cancel the whole malformed string otherwise.
+                if self.osc && !end && ((b < 0x20 && b != 0x1b) || b == 0x7f) {
+                    if !self.discard {
+                        output.push(0x18);
+                    }
+                    self.discard = true;
+                }
                 if !self.discard && self.count > 65_536 {
                     output.push(0x18);
                     self.discard = true;
@@ -331,6 +321,71 @@ impl ProtocolGuard {
             }
         }
         output
+    }
+}
+
+/// Shell statuses are decimal values in 0..=255. Missing/invalid is unknown, never success.
+fn exit_status(text: &str) -> Option<i32> {
+    if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    text.parse::<u8>().ok().map(i32::from)
+}
+impl Observer {
+    fn metadata(&mut self, params: &[&[u8]]) {
+        let get = |i: usize| {
+            params
+                .get(i)
+                .and_then(|b| std::str::from_utf8(b).ok())
+                .unwrap_or("")
+        };
+        match get(0) {
+            "133" => match get(1) {
+                "A" => self.markers.push(Marker::Prompt),
+                "C" => {
+                    for param in params.iter().skip(2) {
+                        if let Ok(s) = std::str::from_utf8(param)
+                            && let Some(encoded) = s.strip_prefix("cmdline_url=")
+                            && let Some(command) = percent_decode(encoded)
+                        {
+                            self.markers.push(Marker::Command(command));
+                        }
+                    }
+                    self.markers.push(Marker::Start);
+                }
+                "D" => self.markers.push(Marker::End(exit_status(get(2)))),
+                _ => {}
+            },
+            "777" if get(1) == "tide" => match get(2) {
+                "append" => self.markers.push(Marker::Append),
+                "command" if get(3).len() <= LIMIT => {
+                    if let Ok(bytes) = STANDARD.decode(get(3))
+                        && let Ok(s) = String::from_utf8(bytes)
+                    {
+                        self.markers.push(Marker::Command(s));
+                    }
+                }
+                "cwd" if get(3).len() <= LIMIT => {
+                    if let Ok(bytes) = STANDARD.decode(get(3))
+                        && let Ok(s) = String::from_utf8(bytes)
+                    {
+                        self.markers.push(Marker::Cwd(s));
+                    }
+                }
+                "input" => self.markers.push(Marker::Input("Input requested".into())),
+                _ => {}
+            },
+            "7" => {
+                if let Some((_, path)) = get(1)
+                    .strip_prefix("file://")
+                    .and_then(|s| s.split_once('/'))
+                    && let Some(path) = percent_decode(&format!("/{path}"))
+                {
+                    self.markers.push(Marker::Cwd(path));
+                }
+            }
+            _ => {}
+        }
     }
 }
 

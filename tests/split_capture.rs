@@ -3,6 +3,61 @@ use tide_terminal::split_capture::{Channel, SplitCapture};
 fn capture() -> SplitCapture {
     SplitCapture::new(None, PathBuf::from("/tmp"), "/bin/bash".into(), true)
 }
+#[test]
+fn shell_exit_cannot_supply_a_missing_command_status() {
+    let mut c = capture();
+    let mut p = std::array::from_fn(|_| vte::Parser::new());
+    feed(
+        &mut c,
+        &mut p,
+        Channel::Stdout,
+        b"\x1b]133;C\x07output\x1b]133;D;0\x07",
+    );
+    feed(&mut c, &mut p, Channel::Stderr, b"\x1b]133;C\x07error");
+    c.finish(0);
+    let source = c.current.clone().unwrap();
+    assert_eq!(source.lock().unwrap().exit_code, Some(-1));
+    for mode in [
+        tide_terminal::append::AppendMode::AfterSuccess,
+        tide_terminal::append::AppendMode::Pipe,
+        tide_terminal::append::AppendMode::File,
+    ] {
+        let action = tide_terminal::append::FollowUp::new(
+            source.clone(),
+            mode,
+            "unused".into(),
+            tide_terminal::session::Options::shell("/bin/bash", "/tmp".into()),
+        )
+        .unwrap();
+        assert!(action.prepare().is_err());
+    }
+}
+#[test]
+fn missing_malformed_or_disagreeing_status_never_establishes_success() {
+    for (a, b) in [
+        ("", ""),
+        (";oops", ";0"),
+        (";0", ";oops"),
+        (";7", ";0"),
+        (";0", ";7"),
+    ] {
+        let mut c = capture();
+        let mut p = std::array::from_fn(|_| vte::Parser::new());
+        for (channel, status) in [(Channel::Stdout, a), (Channel::Stderr, b)] {
+            feed(
+                &mut c,
+                &mut p,
+                channel,
+                format!("\x1b]133;C\x07output\x1b]133;D{status}\x07").as_bytes(),
+            );
+        }
+        assert_eq!(
+            c.completed.lock().unwrap().as_ref().unwrap().exit_code,
+            Some(-1),
+            "{a:?}, {b:?}"
+        );
+    }
+}
 fn feed(c: &mut SplitCapture, p: &mut [vte::Parser; 2], channel: Channel, bytes: &[u8]) {
     c.select(channel);
     p[channel as usize].advance(c, bytes);

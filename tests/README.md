@@ -50,10 +50,25 @@ No test is marked ignored for these gaps. The runner labels a successful run `pa
 
 The tests exposed and fixed two Tide defects: a literal tab marker was passed to the glyph renderer, and indexed/cursor/dynamic color requests were answered with the default foreground color. Those reproductions remain in the library.
 
-To include the GUI tier, run the same aggregate command with `--gui` on a dedicated accelerated X11/Xwayland display. Forward `--kwin-input-helper`, `--btop-binary /usr/bin/btop` and `--eza-binary /usr/bin/eza` as needed. Do not run synthetic input against a working desktop. The existing application README explains the separate KWin test compositor and helper. A plain Xvfb surface cannot satisfy Tide's integrated-GPU policy. Without `--gui`, the JSON explicitly records rendering as not run.
+To include the GUI tier, run the same aggregate command with `--gui` on a dedicated accelerated X11/Xwayland display. Forward `--kwin-input-helper`, `--btop-binary /usr/bin/btop` and `--eza-binary /usr/bin/eza` as needed. Do not run synthetic input against a working desktop. The existing application README explains the separate KWin test compositor and helper. A plain Xvfb surface cannot validate the integrated-GPU policy. For software GUI checks explicitly use `scripts/gui_smoke.py --gpu software`; those results identify a CPU adapter. Without `--gui`, the JSON explicitly records rendering as not run.
 
 For fixture changes, name the behavior, link the controlling protocol reference or original bug in the review, and specify the desired result before observing the implementation. Use synthetic credentials, paths and process data. Preserve minimized failures as a deterministic regression plus the generator seed. Re-run the responsible layer, then the aggregate runner. GPU screenshots need their own evidence; headless semantic checks do not prove glyph appearance or dialog usability.
 
 External resources and the remaining conformance/quality work are in [resources.md](resources.md). The bundle does not vendor external conformance-suite code or claim those suites have passed.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the headless gates on every push/PR and uploads results. Its GUI omission is explicit: a hosted Linux runner does not establish the real integrated-GPU rendering requirement. Local hardware results remain separate from CI results.
+GitHub Actions (`.github/workflows/ci.yml`) runs the headless gates on every push/PR and uploads results. It also exercises the GUI under Xvfb with an explicitly selected software renderer. That does not establish real integrated/discrete GPU behavior. Local hardware results remain separate from hosted results.
+
+Metadata hardening tests (`metadata.rs`, `split_capture.rs`, and the real Bash/Zsh/Fish append matrix) reject unmarked/wrong-session metadata, unknown/invalid exit codes, channel disagreement and missing completions. They verify that forged output cannot change cwd/command identity or enable a success-only follow-up. `Observer::default()` remains an untrusted protocol fixture parser; production sessions use its token-required constructor.
+
+Coverage-guided fuzzing lives in `fuzz/`. GitHub Actions runs `metadata` and `completion` for 60 seconds each on pushes/PRs/manual runs, and 600 seconds each nightly. cargo-fuzz uses nightly Rust, AddressSanitizer, coverage feedback, debug assertions and overflow checks. Version 0.13.2 and a separate dependency lockfile are recorded. The workflow restores learned corpora and uploads logs, corpora and crash reproducers, including on failure. The existing fixed-seed Proptest suite remains in the ordinary test job.
+
+```bash
+rustup toolchain install nightly --profile minimal
+cargo install cargo-fuzz --version 0.13.2 --locked
+cargo +nightly fuzz run metadata -- -max_total_time=60 -max_len=4096 -rss_limit_mb=2048
+cargo +nightly fuzz run completion -- -max_total_time=60 -max_len=4096 -rss_limit_mb=2048
+```
+
+`metadata` mutates arbitrary bytes/chunking and asserts that output without the session token cannot supply command authority. Valid UTF-8 also has a marker-equivalence oracle. `completion` generates per-channel status combinations and checks that only two matching valid codes establish a known result. Neither target executes fuzzed shell commands. Fuzzing is bounded evidence, not exhaustive proof or a claim that the two existing core-parser deviations are resolved. Minimize every finding and add a deterministic regression before fixing it; do not weaken an oracle to hide a failure.
+
+Dotfile migration tests cover legacy fallback, dotfile precedence, invalid-file errors, atomic updates, permission 0600, preference preservation and an isolated missing profile. GUI/CLI tests set `TIDE_CONFIG` to a temporary file and never save over the user's dotfile. Custom font files are parsed before replacing the working font stack; defaults and symbol fallbacks remain available.

@@ -41,6 +41,7 @@ def main():
         env.pop(key, None)
     env.update(PROPTEST_CASES=str(args.property_cases), PROPTEST_RNG_SEED=str(args.seed),
                TIDE_APPEND_TEST_BINARY=str(binary))
+    env['TIDE_CONFIG'] = str(scratch / 'qa-profile.toml')
     env['CARGO_TARGET_DIR'] = str(args.target_dir.resolve() if args.target_dir else scratch / 'target')
     terminal = json.loads((app / 'tests/cases/terminal.json').read_text())
     observer = json.loads((app / 'tests/cases/observer.json').read_text())

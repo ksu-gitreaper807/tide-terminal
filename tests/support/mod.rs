@@ -59,6 +59,7 @@ pub fn markers(markers: &[Marker]) -> Vec<Value> {
     markers
         .iter()
         .map(|marker| match marker {
+            Marker::Append => json!(["append"]),
             Marker::Prompt => json!(["prompt"]),
             Marker::Start => json!(["start"]),
             Marker::End(code) => json!(["end", code]),

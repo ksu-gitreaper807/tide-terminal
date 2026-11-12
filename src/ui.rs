@@ -11,7 +11,7 @@ use std::{
 use tide_terminal::{
     append::{AppendMode, FollowUp, Prepared, append_file},
     capture::Recording,
-    config::Config,
+    config::{Config, GpuMode},
     history::{History, HistoryEntry},
     rules::RuleSpec,
     session::{Event, Launch, Options, Session},
@@ -19,6 +19,7 @@ use tide_terminal::{
 
 #[derive(Default)]
 pub struct UiOptions {
+    pub gpu: Option<GpuMode>,
     pub shell: Option<String>,
     pub clean: bool,
     pub private: bool,
@@ -42,7 +43,7 @@ pub fn launch(options: UiOptions) -> Result<()> {
             .with_transparent(true)
             .with_title(title),
         renderer: eframe::Renderer::Wgpu,
-        wgpu_options: crate::gpu::integrated_configuration(),
+        wgpu_options: crate::gpu::configuration(options.gpu.unwrap_or(Config::load()?.gpu)),
         ..Default::default()
     };
     eframe::run_native(
@@ -186,12 +187,22 @@ struct App {
 }
 impl App {
     fn new(cc: &eframe::CreationContext<'_>, options: UiOptions) -> Self {
-        theme::apply(&cc.egui_ctx);
         let mut config = Config::load().unwrap_or_default();
         if let Some(shell) = &options.shell {
             config.shell = shell.clone();
         }
+        if let Some(gpu) = options.gpu {
+            config.gpu = gpu;
+        }
         config.private |= options.private;
+        let font_error = theme::apply_with_font(&cc.egui_ctx, &config.font_file)
+            .err()
+            .map(|error| {
+                theme::apply(&cc.egui_ctx);
+                format!(
+                    "{error:#}. Using the default font; correct Terminal font file in Settings."
+                )
+            });
         let mut event_log = options
             .event_log
             .as_ref()
@@ -216,7 +227,7 @@ impl App {
             active: 0,
             scroll_active_tab: false,
             tab_view_width: 0.,
-            error: None,
+            error: font_error,
             settings: false,
             run_open: false,
             append_open: false,
@@ -948,13 +959,13 @@ impl App {
                                     .changed();
                                 ui.end_row();
                             });
+                        ui.label("Terminal font file (restart required)");
+                        changed |= track(&mut self.qa_rects, "font_file", ui.add(egui::TextEdit::singleline(&mut self.config.font_file).desired_width(f32::INFINITY).hint_text("Default, or an absolute path to a monospace .ttf / .otf font"))).changed();
                         ui.add_space(8.);
                         changed |= ui
                             .checkbox(&mut self.config.cursor_animation, "Smooth cursor motion")
                             .changed();
-                        ui.label(
-                            theme::help("Preview changes here. Save to keep this appearance after restarting Tide."),
-                        );
+                        ui.label(theme::help(format!("Save preferences to {}. Font-file and renderer changes apply after restarting Tide.", tide_terminal::config::config_path().display())));
                         ui.add_space(8.);
                         ui.separator();
                         theme::section(ui, "Shell & sessions");
@@ -1004,8 +1015,20 @@ impl App {
                         ui.add_space(12.);
                         ui.separator();
                         ui.add_space(8.);
+                        ui.horizontal(|ui| {
+                            ui.label("Renderer (restart required)");
+                            let combo = egui::ComboBox::from_id_salt("gpu_mode")
+                                .selected_text(self.config.gpu.label())
+                                .show_ui(ui, |ui| {
+                                    for mode in [GpuMode::Integrated, GpuMode::Discrete, GpuMode::Auto, GpuMode::Software] {
+                                        changed |= ui.selectable_value(&mut self.config.gpu, mode, mode.label()).changed();
+                                    }
+                                });
+                            self.qa_rects.insert("gpu_mode".into(), combo.response.rect);
+                        });
+                        ui.label(theme::help("Save, then restart Tide to change renderer. Integrated and Discrete require that GPU; Software requires an available CPU graphics driver."));
                         ui.label(
-                            RichText::new(format!("Integrated GPU: {}", self.gpu_name))
+                            RichText::new(format!("Active renderer: {}", self.gpu_name))
                                 .small()
                                 .color(MUTED),
                         );
@@ -1030,7 +1053,7 @@ impl App {
                         )
                         .clicked()
                         {
-                            match self.config.save() {
+                            match theme::validate_terminal_font(&self.config.font_file).and_then(|_| self.config.save()) {
                                 Ok(()) => self.settings_saved = Some(Instant::now()),
                                 Err(error) => self.error = Some(error.to_string()),
                             }

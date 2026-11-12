@@ -359,7 +359,7 @@ impl Session {
                 .map(|p| History::open(p))
                 .transpose()?
         };
-        let recorder = SplitCapture::new(
+        let mut recorder = SplitCapture::new(
             options.managed().then(|| options.label()),
             options.cwd.clone(),
             match &options.launch {
@@ -377,7 +377,10 @@ impl Session {
                 recorder.ready.clone(),
             )?)
         };
+        let token = platform::integration_token()?;
+        recorder.require_integration_token(Some(token.clone()));
         let (mut command, startup) = setup_command(&options)?;
+        command.env("TIDE_MARKER_TOKEN", &token);
         if let Some(server) = &append_server {
             command.env("TIDE_APPEND_SOCKET", &server.path);
         }
@@ -467,7 +470,7 @@ impl Session {
                     run_id,
                     rules,
                     history,
-                    observer: Observer::default(),
+                    observer: Observer::with_integration_token(Some(token)),
                     recorder,
                     capture_parser: std::array::from_fn(|_| vte::Parser::new()),
                     frames: std::array::from_fn(|_| crate::stream_frame::Frames::default()),
@@ -738,7 +741,7 @@ impl Worker {
         let capture_done = self.recorder.ready.load(Ordering::Acquire);
         if capture_done {
             if let Some(code) = self.end_pending.take() {
-                markers.insert(0, Marker::End(code));
+                markers.insert(0, Marker::End((code >= 0).then_some(code)));
             }
             if self.prompt_pending {
                 markers.push(Marker::Prompt);
@@ -786,10 +789,22 @@ impl Worker {
                     });
                 }
                 Marker::End(code) if !self.options.managed() => {
+                    let code = code.unwrap_or(-1);
                     if !capture_done {
                         self.end_pending = Some(code);
                         continue;
                     }
+                    // Appending deliberately preserves its source capture. Only use the
+                    // coordinated status when it belongs to this completed command.
+                    let code = self
+                        .recorder
+                        .completed
+                        .lock()
+                        .unwrap()
+                        .as_ref()
+                        .filter(|run| run.command == self.state.lock().unwrap().command)
+                        .and_then(|run| run.exit_code)
+                        .unwrap_or(code);
                     let cmd = {
                         let mut s = self.state.lock().unwrap();
                         s.at_prompt = true;

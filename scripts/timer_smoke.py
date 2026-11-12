@@ -22,10 +22,10 @@ def main():
         env = os.environ.copy()
         for key in ('TIDE_SHELL', 'TIDE_PRIVATE', 'TIDE_HISTORY'):
             env.pop(key, None)
-        env.update(XDG_CONFIG_HOME=temporary, XDG_DATA_HOME=temporary)
+        env.update(XDG_CONFIG_HOME=temporary, XDG_DATA_HOME=temporary, TIDE_CONFIG=str(Path(temporary) / ".tide.toml"))
         config = Path(temporary) / 'tide-terminal'
         config.mkdir()
-        (config / 'config.toml').write_text('shell = "/bin/bash"\n')
+        Path(env['TIDE_CONFIG']).write_text('shell = "/bin/bash"\n')
 
         def run(arguments, *, environment=None, launcher=False):
             prefix = [str(args.launcher)] if launcher else [str(args.binary), 'timer']

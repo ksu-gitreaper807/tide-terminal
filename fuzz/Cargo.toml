@@ -1,0 +1,30 @@
+[package]
+name = "tide-terminal-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tide-terminal = { path = "..", default-features = false }
+vte = "0.15"
+
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "metadata"
+path = "fuzz_targets/metadata.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "completion"
+path = "fuzz_targets/completion.rs"
+test = false
+doc = false
+bench = false

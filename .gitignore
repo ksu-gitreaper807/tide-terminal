@@ -6,3 +6,10 @@
 /text.txt
 
 /vendor/blesh/cache.d/
+
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/corpus/*/*
+!/fuzz/corpus/*/seed-*
+
+__pycache__/

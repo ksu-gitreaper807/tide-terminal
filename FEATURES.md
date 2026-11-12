@@ -1,7 +1,7 @@
 # Tide Terminal — salient features
 
 - **Native Rust terminal emulator for Linux**, backed by a real PTY and the Alacritty terminal core.
-- **Integrated GPU rendering**, with the current build requiring an iGPU. Intel ADL GT2/Vulkan is the tested adapter; GPU compatibility beyond tested hardware is not implied.
+- **Configurable GPU rendering**, defaulting to the iGPU, with explicit integrated/discrete/automatic/software choices in Settings or `gui --gpu`. Intel ADL GT2/Vulkan is the validated hardware; software CI checks are labelled separately.
 - **Bash, Zsh and Fish support**, including existing shell configuration and native Fish suggestions or bundled Bash/Zsh suggestion integrations.
 - **Input-needed alerts** for common password/passphrase, fingerprint-reader and confirmation prompts. Detection is heuristic; Tide does not authenticate or automatically answer prompts.
 - **Command stop conditions**: elapsed runtime, output inactivity, literal output text, and regex patterns. Graceful interruption can escalate to a forced stop after a configurable grace period.

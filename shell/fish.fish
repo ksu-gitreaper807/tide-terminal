@@ -3,31 +3,35 @@ if set -q __tide_loaded
 end
 set -g __tide_loaded 1
 function __tide_emit
-    printf $argv
+    set -l payload ''
+    if test (count $argv) -gt 1
+        set payload $argv[2]
+    end
+    printf '\033]777;tide;v1;%s;%s;%s\007' "$TIDE_MARKER_TOKEN" "$argv[1]" "$payload"
     if test "$TIDE_SPLIT_CAPTURE" = 1
-        printf $argv >&2
+        printf '\033]777;tide;v1;%s;%s;%s\007' "$TIDE_MARKER_TOKEN" "$argv[1]" "$payload" >&2
     end
 end
 function T_:
     "$TIDE_EXE" timer $argv
 end
 function A_:
-    __tide_emit '\033]777;tide;append\007'
+    __tide_emit append
     "$TIDE_EXE" append $argv
 end
 function __tide_preexec --on-event fish_preexec
     if not string match -qr '^ ' -- $argv[1]
-        __tide_emit '\033]777;tide;command;%s\007' (printf '%s' "$argv[1]" | base64 | string join '')
+        __tide_emit command (printf '%s' "$argv[1]" | base64 | string join '')
     end
-    __tide_emit '\033]133;C\007'
+    __tide_emit start
 end
 function __tide_postexec --on-event fish_postexec
     set -l last_status $status
-    __tide_emit '\033]133;D;%s\007' $last_status
+    __tide_emit end $last_status
 end
 function __tide_prompt --on-event fish_prompt
-    __tide_emit '\033]133;A\007'
-    __tide_emit '\033]777;tide;cwd;%s\007' (printf '%s' "$PWD" | base64 | string join '')
+    __tide_emit prompt
+    __tide_emit cwd (printf '%s' "$PWD" | base64 | string join '')
 end
 function __tide_lookup
     set -l result ("$TIDE_EXE" history --query (commandline) --cwd "$PWD" --first | string collect)

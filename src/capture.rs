@@ -25,6 +25,7 @@ pub struct CapturedRun {
     #[serde(default)]
     pub streams: Option<StreamOutput>,
     pub truncated: bool,
+    /// None while running; -1 means completed but unavailable/unknown, never success.
     pub exit_code: Option<i32>,
 }
 pub struct Recorder {
@@ -137,7 +138,7 @@ impl Perform for Recorder {
                     let command = std::mem::take(&mut self.pending);
                     self.start(command);
                 }
-                Marker::End(code) if !self.managed => self.finish(code),
+                Marker::End(code) if !self.managed => self.finish(code.unwrap_or(-1)),
                 Marker::Cwd(cwd) => {
                     self.cwd = PathBuf::from(cwd);
                     if !self.capturing

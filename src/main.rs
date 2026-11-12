@@ -32,6 +32,9 @@ struct Cli {
 enum Commands {
     /// Open the native terminal window.
     Gui {
+        /// Renderer override for this launch: integrated (default), discrete, auto or software.
+        #[arg(long, value_enum)]
+        gpu: Option<config::GpuMode>,
         #[arg(long)]
         shell: Option<String>,
         #[arg(long)]
@@ -185,6 +188,7 @@ fn run() -> Result<()> {
             {
                 let mut opts = ui::UiOptions::default();
                 if let Some(Commands::Gui {
+                    gpu,
                     shell,
                     clean,
                     private,
@@ -196,6 +200,7 @@ fn run() -> Result<()> {
                 }) = command
                 {
                     opts = ui::UiOptions {
+                        gpu,
                         shell,
                         clean,
                         private,

@@ -1,6 +1,15 @@
 **Tide Terminal** is a native Rust terminal for Linux, with Bash, Zsh, and Fish integration, inline suggestions, input alerts, animated cursor movement, and timer/output rules for owned command runs.
 
-The application explicitly selects a surface-compatible **integrated GPU**. It prefers Vulkan among integrated adapters and refuses to silently select a discrete GPU or software renderer. The selected GPU is shown in Settings. This policy is local to Tide; it does not modify the machine's graphics configuration.
+The application defaults to a surface-compatible **integrated GPU**, preferring Vulkan. You can explicitly switch using **Settings → Renderer → Save**, then restart, or override one launch:
+
+```bash
+./run.sh gui --gpu integrated
+./run.sh gui --gpu discrete
+./run.sh gui --gpu auto
+./run.sh gui --gpu software
+```
+
+Automatic prefers integrated, then discrete, virtual and CPU adapters. The other modes require their specified adapter class and report an error if unavailable. Software mode requires a CPU graphics driver such as Mesa llvmpipe; choosing it does not install that driver. The active adapter is shown in Settings. Existing configurations keep the integrated default. This policy is local to Tide.
 
 Run the included Linux build from this directory:
 
@@ -161,7 +170,7 @@ print("\033]777;tide;input;\a", end="", flush=True)
 
 An alert is dismissed when input resumes, the prompt changes, or the command settles. A new prompt can alert again. Tide does not answer prompts automatically.
 
-**Local data.** Appearance settings are stored in `$XDG_CONFIG_HOME/tide-terminal/config.toml` and shared command history in `$XDG_DATA_HOME/tide-terminal/history.sqlite3`, using the usual `~/.config` and `~/.local/share` defaults. Leading-space commands are excluded from Tide history. Private sessions skip Tide history and disable the shell history file for app-launched shells. Terminal scrollback stays in memory. Transcript/event recording only occurs when explicitly requested through the testing/debug flags.
+**Local data.** Preferences are stored in `~/.tide.toml` (or the file selected by `TIDE_CONFIG`), and shared command history in `$XDG_DATA_HOME/tide-terminal/history.sqlite3`, using the usual `~/.config` and `~/.local/share` defaults. Leading-space commands are excluded from Tide history. Private sessions skip Tide history and disable the shell history file for app-launched shells. Terminal scrollback stays in memory. Transcript/event recording only occurs when explicitly requested through the testing/debug flags.
 
 **Building and testing.** The included source was tested with Rust 1.99.1. Build dependencies include a C compiler for bundled SQLite, pkg-config, and the Linux graphics/window libraries required by winit/wgpu. Running the GUI requires access to a supported integrated GPU and a Wayland or X11 display.
 
@@ -174,7 +183,7 @@ cargo fmt --check
 
 The expanded [test-library guide](tests/README.md) maps coverage and known gaps. [Testing resources](tests/resources.md) links the upstream terminal suites and Rust testing tools researched for this project. Run all local automated tiers with `python3 scripts/test_library.py --binary "$PWD/bin/tide-terminal" --output-dir /path/to/results --work-dir /path/to/scratch`; add `--gui` only on an isolated accelerated test display. The JSON report distinguishes successful regression checks, tracked dependency gaps and checks that were not run.
 
-The PTY tests use the installed Bash, Zsh, Fish, and Python 3 executables. `scripts/cli_smoke.py` tests the actual executable and raw terminal restoration using only the Python standard library. `scripts/timer_smoke.py` covers the `T_:` syntax, unit conversions, output rules, shell selection, validation, privacy and standalone launcher. `scripts/gui_smoke.py` drives the actual X11 window using XTest, python-xlib, and Pillow. It runs with isolated config/history/cache and records GPU identity, native GPU screenshots, cursor animation frames, and actual process events. Layout checks cover tab overflow and the 640×420 minimum window size. An accelerated X11/Xwayland display with DRI3 is required for these iGPU tests; plain Xvfb is intentionally rejected by the GPU policy.
+The PTY tests use the installed Bash, Zsh, Fish, and Python 3 executables. `scripts/cli_smoke.py` tests the actual executable and raw terminal restoration using only the Python standard library. `scripts/timer_smoke.py` covers the `T_:` syntax, unit conversions, output rules, shell selection, validation, privacy and standalone launcher. `scripts/gui_smoke.py` drives the actual X11 window using XTest, python-xlib, and Pillow. It runs with isolated config/history/cache and records GPU identity, native GPU screenshots, cursor animation frames, and actual process events. Layout checks cover tab overflow and the 640×420 minimum window size. The default GUI tier requires an accelerated X11/Xwayland display with DRI3. Hosted CI explicitly selects `--gpu software` under Xvfb; that validates GUI behavior without claiming iGPU hardware correctness.
 
 ```bash
 python scripts/cli_smoke.py --binary "$PWD/bin/tide-terminal" \
@@ -202,3 +211,11 @@ To include a real btop rendering check in the GUI smoke suite, pass `--btop-bina
 Pass `--eza-binary /usr/bin/eza` to check real file/folder icons and a gallery of all Nerd Font families. Add `--icons-only` for a focused run. The listing uses synthetic files in a temporary directory. Rust tests audit the full Nerd Font, eza and bundled Unicode symbol inventories and check private-use icon sizing at several supported font sizes.
 
 **Development and CI.** GitHub Actions runs formatting, strict Clippy, all Rust/PTY/property tests and CLI/timer integration on pushes and pull requests. It saves test results as artifacts and explicitly reports that physical iGPU GUI tests are not run on hosted runners. Run the local GUI tier before publishing transport/input/rendering changes. See [FEATURES.md](FEATURES.md) for the feature list and [tests/README.md](tests/README.md) for validation commands.
+
+**Command metadata and trust.** New sessions use a fresh, random session token in versioned OSC 777 envelopes for command labels, cwd, start/end and append markers. Plain OSC 133/7 or old Tide markers printed by a child are not automation authority. A missing, malformed, negative, out-of-range or disagreeing stream status never authorizes `&&`; unavailable captures produce an error. If an interactive shell exits without completing both command boundaries, its process exit does not supply the missing command status. Managed runs use the child process result.
+
+The token prevents accidental output and other/remote sessions from impersonating these hooks. It is **not a security boundary against a hostile local child**: descendants inherit it and can read it. Cooperative input-request messages remain advisory. Arbitrarily nested shells/SSH/tmux do not automatically gain trusted integration; use an app-launched supported shell for these operations. Restart after upgrading to load the new hooks.
+
+**Preferences dotfile.** GPU mode, terminal font file/size, opacity, cursor animation, shell, suggestions, privacy and notifications share one editable TOML file: `~/.tide.toml`. See [config.example.toml](config.example.toml). `TIDE_CONFIG=/absolute/path/profile.toml ./run.sh` selects an alternate profile. An explicit profile never falls back to another file if absent. Paths inside TOML are literal; use an absolute font path rather than `~` or `$HOME`.
+
+If the dotfile is absent, Tide reads the existing `$XDG_CONFIG_HOME/tide-terminal/config.toml` (normally `~/.config/tide-terminal/config.toml`). Saving writes the dotfile atomically with owner-only permissions and leaves that legacy file intact. The dotfile takes precedence; an invalid dotfile reports an error rather than silently loading another profile. To roll back, move the dotfile aside and the legacy settings become available again. Font-file and GPU changes require restarting; other appearance controls retain their live behavior. A missing/invalid custom font falls back visibly to the default without removing icon/Unicode fallback fonts. GUI Save validates the font before replacing a working config.

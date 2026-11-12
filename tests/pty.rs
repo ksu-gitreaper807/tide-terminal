@@ -579,7 +579,25 @@ fn enhanced_suggestions_render_and_accept_in_bash_zsh_and_fish() {
         wait(&s, Duration::from_secs(5), |e| matches!(e, Event::Prompt));
         std::thread::sleep(Duration::from_millis(100));
         s.write(b"cat tide_completion_p\t".to_vec()).unwrap();
-        std::thread::sleep(Duration::from_millis(250));
+        // Completion is asynchronous (especially ble.sh's first uncached lookup).
+        // Observe the edited buffer instead of racing it with a fixed 250ms Enter.
+        let deadline = Instant::now() + Duration::from_secs(8);
+        loop {
+            let text: String = s
+                .snapshot()
+                .cells
+                .iter()
+                .map(|cell| cell.text.as_str())
+                .collect();
+            if text.contains("tide_completion_probe") {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "{shell}: completion did not update the editor: {text:?}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
         s.write(b"\n".to_vec()).unwrap();
         let events = wait(&s, Duration::from_secs(5), |e| {
             matches!(e, Event::CommandEnded { .. })

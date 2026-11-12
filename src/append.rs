@@ -73,7 +73,7 @@ impl FollowUp {
         };
         ensure!(
             code >= 0,
-            "Source capture is unavailable because its stream boundaries were lost"
+            "Source capture is unavailable: exit status is unknown or stream boundaries were lost"
         );
         if self.mode == AppendMode::AfterSuccess && code != 0 {
             return Ok(Some(Prepared::Skipped(code)));

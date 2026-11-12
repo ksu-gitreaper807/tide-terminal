@@ -1,0 +1,11 @@
+# Copy to ~/.tide.toml, or set TIDE_CONFIG to another TOML file.
+# Settings -> Save changes writes the same preferences atomically (mode 0600).
+shell = "/bin/bash"
+gpu = "integrated" # integrated | discrete | auto | software; restart to apply
+font_size = 16.0
+font_file = "" # Optional absolute path to a monospace TTF/OTF face; restart to apply
+opacity = 0.96
+cursor_animation = true
+notifications = true
+private = false
+enhanced_suggestions = true

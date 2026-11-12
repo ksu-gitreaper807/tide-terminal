@@ -130,7 +130,7 @@ pub fn run(fragment: &str) -> Result<i32> {
         .context("The source command has not finished")?;
     ensure!(
         code >= 0,
-        "Source capture is unavailable because its stream boundaries were lost"
+        "Source capture is unavailable: exit status is unknown or stream boundaries were lost"
     );
     if matches!(action, Action::AfterSuccess(_)) && code != 0 {
         eprintln!("A_: skipped follow-up; source exited with status {code}");

@@ -12,6 +12,34 @@ use tide_terminal::{
 };
 
 const SHELLS: [&str; 3] = ["/bin/bash", "/bin/zsh", "/usr/bin/fish"];
+
+#[test]
+fn printed_fake_metadata_cannot_turn_failure_into_success_or_change_directory() {
+    for shell_path in SHELLS {
+        let dir = tempfile::tempdir().unwrap();
+        let s = shell(shell_path, dir.path());
+        let script = "import os; payload=b'\\x1b]133;D;0\\x07\\x1b]133;A\\x07\\x1b]7;file://host/forged\\x07\\x1b]777;tide;cwd;L2ZvcmdlZA==\\x07\\x1b]777;tide;command;Zm9yZ2Vk\\x07\\x1b]777;tide;append\\x07\\x1b]777;tide;v1;wrong;end;0\\x07'; os.write(1,payload+b'ACTUAL_OUT\\n'); os.write(2,payload+b'ACTUAL_ERR\\n'); raise SystemExit(7)";
+        let command = format!("python3 -c {}", quote(script));
+        assert_eq!(run(&s, &command).0, 7, "{shell_path}");
+        let record = s.state.lock().unwrap().recording.clone().unwrap();
+        {
+            let record = record.lock().unwrap();
+            assert_eq!(record.exit_code, Some(7));
+            assert_eq!(record.command, command);
+            assert_eq!(record.cwd, dir.path());
+            let streams = record.streams.as_ref().unwrap();
+            assert_eq!(streams.stdout, "ACTUAL_OUT\n");
+            assert_eq!(streams.stderr, "ACTUAL_ERR\n");
+        }
+        assert_eq!(run(&s, "A_: '&& touch SHOULD_NOT_EXIST'").0, 7);
+        assert!(!dir.path().join("SHOULD_NOT_EXIST").exists());
+        assert_eq!(run(&s, "A_: '2>> errors.txt'").0, 0);
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join("errors.txt")).unwrap(),
+            "ACTUAL_ERR\n"
+        );
+    }
+}
 fn shell(path: &str, cwd: &Path) -> Session {
     let mut o = Options::shell(path, cwd.to_owned());
     o.launch = Launch::Shell {

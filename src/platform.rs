@@ -86,3 +86,11 @@ pub fn terminal_size() -> Option<(u16, u16)> {
         None
     }
 }
+
+/// Fresh 256-bit session marker capability; never reuse inherited session metadata.
+pub fn integration_token() -> std::io::Result<String> {
+    use std::io::Read;
+    let mut bytes = [0u8; 32];
+    std::fs::File::open("/dev/urandom")?.read_exact(&mut bytes)?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}

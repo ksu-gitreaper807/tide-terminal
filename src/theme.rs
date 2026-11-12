@@ -13,6 +13,22 @@ pub const DANGER: Color32 = Color32::from_rgb(225, 155, 155);
 const TERMINAL_ICONS: &str = "terminal-icons";
 
 pub fn apply(ctx: &egui::Context) {
+    apply_with_font(ctx, "").expect("built-in fonts");
+}
+
+pub fn validate_terminal_font(path: &str) -> anyhow::Result<Option<Vec<u8>>> {
+    use anyhow::Context;
+    if path.trim().is_empty() {
+        return Ok(None);
+    }
+    let bytes = std::fs::read(path).with_context(|| format!("Read terminal font {path}"))?;
+    ttf_parser::Face::parse(&bytes, 0)
+        .map_err(|e| anyhow::anyhow!("Invalid terminal font {path}: {e:?}"))?;
+    Ok(Some(bytes))
+}
+
+pub fn apply_with_font(ctx: &egui::Context, font_file: &str) -> anyhow::Result<()> {
+    let custom = validate_terminal_font(font_file)?;
     // Terminal control punctuation must not trigger egui's global Ctrl+- zoom.
     ctx.options_mut(|options| options.zoom_with_keyboard = false);
     let mut fonts = egui::FontDefinitions::default();
@@ -50,6 +66,17 @@ pub fn apply(ctx: &egui::Context) {
                 break;
             }
         }
+    }
+    if let Some(bytes) = custom {
+        fonts.font_data.insert(
+            "custom-terminal".into(),
+            egui::FontData::from_owned(bytes).into(),
+        );
+        fonts
+            .families
+            .entry(egui::FontFamily::Monospace)
+            .or_default()
+            .insert(0, "custom-terminal".into());
     }
     let nerd = "nerd-symbols";
     fonts.font_data.insert(
@@ -180,6 +207,7 @@ pub fn apply(ctx: &egui::Context) {
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, BORDER);
     style.visuals = visuals;
     ctx.set_style(style);
+    Ok(())
 }
 
 pub fn terminal_icon_font(ctx: &egui::Context, text: &str, cell: Vec2) -> Option<FontId> {
@@ -413,5 +441,25 @@ mod tests {
                 assert!(fonts.has_glyphs(&font, "↑↓←→↵¹²³⁴⁵°"));
             });
         });
+    }
+}
+
+#[cfg(test)]
+mod custom_font_tests {
+    use super::*;
+    #[test]
+    fn custom_font_is_validated_before_replacing_the_working_stack() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("font.ttf");
+        assert!(validate_terminal_font("").unwrap().is_none());
+        assert!(validate_terminal_font(path.to_str().unwrap()).is_err());
+        std::fs::write(&path, b"not a font").unwrap();
+        assert!(validate_terminal_font(path.to_str().unwrap()).is_err());
+        std::fs::write(&path, include_bytes!("../assets/fonts/DejaVuSans.ttf")).unwrap();
+        assert!(
+            validate_terminal_font(path.to_str().unwrap())
+                .unwrap()
+                .is_some()
+        );
     }
 }
