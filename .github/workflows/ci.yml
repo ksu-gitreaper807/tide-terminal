@@ -7,6 +7,9 @@ on:
     - cron: '17 2 * * *'
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,6 +21,8 @@ jobs:
       CARGO_TERM_COLOR: always
       PROPTEST_CASES: '256'
       PROPTEST_RNG_SEED: '20261112'
+      # Ubuntu's global zshrc otherwise compinit-prompts on runner-owned fpath entries.
+      skip_global_compinit: '1'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
