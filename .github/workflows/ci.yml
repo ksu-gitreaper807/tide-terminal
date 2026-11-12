@@ -3,6 +3,8 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
 permissions:
   contents: read
 concurrency:
@@ -23,7 +25,7 @@ jobs:
       - name: Install shell and desktop build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libwayland-dev libx11-dev
+          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libwayland-dev libx11-dev xvfb xauth mesa-vulkan-drivers python3-xlib python3-pil btop
       - name: Install Rust
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
@@ -55,13 +57,15 @@ jobs:
           mkdir -p .ci-work qa-results
           python3 scripts/cli_smoke.py --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/cli.json"
           python3 scripts/timer_smoke.py --binary "$PWD/bin/tide-terminal" --launcher "$PWD/T_:" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/timer.json"
-      - name: Record GUI validation boundary
+      - name: GUI integration on explicitly selected software renderer
+        run: |
+          xvfb-run -a -s '-screen 0 1920x1080x24' /usr/bin/python3 scripts/gui_smoke.py --gpu software --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --output-dir "$PWD/qa-results/gui-software" --btop-binary /usr/bin/btop
+      - name: Record hardware validation boundary
         if: always()
         run: |
           mkdir -p qa-results
-          echo 'Real iGPU GUI suite is not run on this hosted runner. No software-GPU fallback is enabled. See tests/README.md for local hardware checks.' > qa-results/gui-not-run.txt
-          echo '### Validation scope' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Rust/PTY (Bash, Zsh, Fish), parser/property tests, CLI/timer integration, formatting and strict Clippy. Real iGPU GUI tests require local hardware and are not claimed by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Hosted GUI checks explicitly use CPU rendering. Real iGPU/discrete hardware is not established here; see tests/README.md for local checks.' > qa-results/hardware-not-run.txt
+          echo 'Rust/PTY, parser/property tests, CLI/timer integration, software-rendered GUI, formatting and strict Clippy run here. Real GPU validation remains separate.' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -69,4 +73,57 @@ jobs:
           name: test-results
           path: qa-results/
           if-no-files-found: error
+          retention-days: 14
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [metadata, completion]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install fuzz toolchain
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustc +nightly -Vv
+          cargo install cargo-fuzz --version 0.13.2 --locked
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            fuzz/target
+          key: ${{ runner.os }}-fuzz-${{ matrix.target }}-${{ hashFiles('fuzz/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-fuzz-${{ matrix.target }}-${{ hashFiles('fuzz/Cargo.lock') }}-
+      - name: Restore learned corpus
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - name: Coverage-guided sanitizer fuzzing
+        env:
+          FUZZ_TARGET: ${{ matrix.target }}
+          RUN_EVENT: ${{ github.event_name }}
+        run: |
+          mkdir -p qa-results fuzz/artifacts
+          duration=60
+          if [ "$RUN_EVENT" = schedule ]; then duration=600; fi
+          cargo +nightly metadata --manifest-path fuzz/Cargo.toml --locked --format-version 1 > qa-results/fuzz-dependencies.json
+          CARGO_NET_OFFLINE=true cargo +nightly fuzz run "$FUZZ_TARGET" -- -max_total_time="$duration" -max_len=4096 -rss_limit_mb=2048 2>&1 | tee "qa-results/fuzz-$FUZZ_TARGET.log"
+      - name: Upload fuzz evidence and reproducers
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: |
+            qa-results/
+            fuzz/artifacts/
+            fuzz/corpus/${{ matrix.target }}/
+          if-no-files-found: warn
           retention-days: 14
