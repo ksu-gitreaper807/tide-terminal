@@ -1,0 +1,71 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CARGO_TERM_COLOR: always
+      PROPTEST_CASES: '256'
+      PROPTEST_RNG_SEED: '20261112'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install shell and desktop build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libwayland-dev libx11-dev
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          echo "version=$(rustc -V | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        id: rust
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-rust-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock') }}
+      - name: Formatting
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Rust, terminal parser and Bash/Zsh/Fish PTY tests
+        run: |
+          mkdir -p qa-results
+          cargo test --all-targets --locked -- --test-threads=1 2>&1 | tee qa-results/rust-tests.log
+      - name: Build test executable
+        run: |
+          cargo build --locked
+          mkdir -p bin
+          cp target/debug/tide-terminal bin/tide-terminal
+      - name: CLI and timer integration tests
+        run: |
+          python3 scripts/cli_smoke.py --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/cli.json"
+          python3 scripts/timer_smoke.py --binary "$PWD/bin/tide-terminal" --launcher "$PWD/T_:" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/timer.json"
+      - name: Record GUI validation boundary
+        if: always()
+        run: |
+          mkdir -p qa-results
+          echo 'Real iGPU GUI suite is not run on this hosted runner. No software-GPU fallback is enabled. See tests/README.md for local hardware checks.' > qa-results/gui-not-run.txt
+          echo '### Validation scope' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Rust/PTY (Bash, Zsh, Fish), parser/property tests, CLI/timer integration, formatting and strict Clippy. Real iGPU GUI tests require local hardware and are not claimed by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results
+          path: qa-results/
+          if-no-files-found: error
+          retention-days: 14
