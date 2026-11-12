@@ -1553,9 +1553,15 @@ impl App {
                                 ));
                             }
                         } else if view.mode.contains(TermMode::ALT_SCREEN) {
-                            let key = if scroll > 0. { b"\x1b[A" } else { b"\x1b[B" };
-                            for _ in 0..((scroll.abs() / cell.y).ceil() as usize).min(10) {
-                                let _ = p.session.write(key.to_vec());
+                            let key = if scroll > 0. {
+                                Key::ArrowUp
+                            } else {
+                                Key::ArrowDown
+                            };
+                            if let Some(bytes) = key_bytes(key, egui::Modifiers::NONE, view.mode) {
+                                for _ in 0..((scroll.abs() / cell.y).ceil() as usize).min(10) {
+                                    let _ = p.session.write(bytes.clone());
+                                }
                             }
                         } else {
                             p.session.scroll((scroll / cell.y).round() as i32);

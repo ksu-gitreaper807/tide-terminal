@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--kwin-input-helper",type=Path)
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--append-only", action="store_true")
+    parser.add_argument("--pager-only", action="store_true")
     parser.add_argument("--btop-binary", type=Path)
     parser.add_argument("--btop-only", action="store_true")
     parser.add_argument("--eza-binary", type=Path)
@@ -56,7 +57,11 @@ def main():
             if not helper:
                 xtest.fake_input(display_connection,kind,detail or 0,x=x or 0,y=y or 0)
                 return
-            if kind==X.MotionNotify:line=f'motion {x} {y}'
+            if kind in (X.ButtonPress, X.ButtonRelease) and detail in (4, 5):
+                if kind == X.ButtonRelease:
+                    return
+                line = f'axis 0 {-15 if detail == 4 else 15}'
+            elif kind==X.MotionNotify:line=f'motion {x} {y}'
             elif kind in (X.KeyPress,X.KeyRelease):line=f'key {detail} {int(kind==X.KeyPress)}'
             elif kind in (X.ButtonPress,X.ButtonRelease):line=f'button {detail} {int(kind==X.ButtonPress)}'
             else:raise AssertionError(kind)
@@ -90,6 +95,10 @@ def main():
 
         def event_after(index, predicate):
             return next((r for r in records()[index:] if "event" in r and predicate(r["event"])), None)
+
+        def output_since(index):
+            return "".join(r["event"]["text"] for r in records()[index:]
+                           if r.get("event", {}).get("event") == "output")
 
         def find_window():
             def visit(window):
@@ -262,6 +271,38 @@ def main():
             screenshot("symbol-gallery.png")
             results["gui_nerd_font_family_gallery"] = "passed"
 
+        def check_pager():
+            # A real pager opens ttyname(2) on some less versions. Wheel input
+            # and terminal query replies must reach that input terminal.
+            import shlex
+            pager_file = scratch / "pager-lines.txt"
+            pager_file.write_text("".join(f"PAGER_LINE_{n:04d}\n" for n in range(1, 240)))
+            tabs_before = sum(name.startswith("tab_") and name[4:].isdigit() for name in ui_state().get("ui", {}))
+            index = start_run("less -R " + shlex.quote(str(pager_file)))
+            wait(lambda: event_after(index, lambda e: e["event"] == "output" and "PAGER_LINE_0001" in e["text"]), "real pager first page")
+            click("terminal", .5, .4)
+            before = native_frame().convert("RGB")
+            before.save(args.output_dir / "pager-before.png")
+            moved_index = len(records())
+            for _ in range(3):
+                inject(d, X.ButtonPress, 5)
+                inject(d, X.ButtonRelease, 5)
+                d.sync()
+                time.sleep(.12)
+            wait(lambda: event_after(moved_index, lambda e: e["event"] == "output" and "PAGER_LINE_" in e["text"]), "mouse wheel scrolls pager content")
+            after = native_frame().convert("RGB")
+            after.save(args.output_dir / "pager-after.png")
+            from PIL import ImageChops
+            crop = (20, 100, before.width - 20, before.height - 80)
+            assert ImageChops.difference(before.crop(crop), after.crop(crop)).getbbox(), "Pager content did not move"
+            output = "".join(r["event"]["text"] for r in records()[index:] if r.get("event", {}).get("event") == "output")
+            assert "^[]10;rgb:" not in output and "^[[?6c" not in output
+            key("q")
+            wait(lambda: event_after(index, lambda e: e["event"] == "exited" and e["code"] == 0), "pager quits through GUI keyboard")
+            key("w", ("Control_L", "Shift_L"))
+            wait(lambda: sum(name.startswith("tab_") and name[4:].isdigit() for name in ui_state().get("ui", {})) == tabs_before, "finished pager tab closes")
+            results["gui_pager_wheel_scroll_and_quit"] = "passed"
+
         def check_appending():
             import shlex
             def choose(mode):
@@ -387,8 +428,12 @@ def main():
             if args.icons_only:
                 check_icons()
                 return
+            if args.pager_only:
+                check_pager()
+                return
             if not args.run_input_only:
                 check_appending()
+                check_pager()
             initial_scale = ui_state()["scale"]
             click("terminal", .15, .2)
             key("r", ("Control_L", "Shift_L"))
@@ -433,7 +478,7 @@ def main():
             text('python3 -u -c "import time; print(\'GUI_CONTROL_READY\',flush=True); time.sleep(30)"\n')
             # Preexec metadata can precede tcsetpgrp/exec. Wait for the child
             # itself so an interrupt cannot accidentally target the idle shell.
-            wait(lambda: event_after(index, lambda e: e["event"] == "output" and "GUI_CONTROL_READY\r\n" in e["text"]), "foreground child ready")
+            wait(lambda: "GUI_CONTROL_READY\r\n" in output_since(index), "foreground child ready")
             key("c", ("Control_L",))
             wait(lambda: event_after(index, lambda e: e["event"] == "command_ended" and e["code"] == 130), "Ctrl+C interrupts the foreground command", timeout=4)
             results["gui_ctrl_c_foreground_interrupt"] = "passed"

@@ -412,6 +412,7 @@ impl Session {
             .process_id()
             .context("The PTY did not return a process ID")?;
         let writer = AsyncWriter::new(pair.master.take_writer()?);
+        let stderr_writer = AsyncWriter::new(stderr_pair.master.take_writer()?);
         let (read_tx, read_rx) = bounded(64);
         let reader = split_pty::Reader::start(
             pair.master.as_ref(),
@@ -461,6 +462,7 @@ impl Session {
                     stderr_master: stderr_pair.master,
                     master: pair.master,
                     writer,
+                    stderr_writer,
                     read_rx,
                     rx,
                     tx: event_tx,
@@ -564,6 +566,7 @@ struct Worker {
     child: Box<dyn Child + Send + Sync>,
     master: Box<dyn MasterPty + Send>,
     writer: AsyncWriter,
+    stderr_writer: AsyncWriter,
     read_rx: Receiver<ReadEvent>,
     rx: Receiver<Control>,
     tx: Sender<Event>,
@@ -675,6 +678,55 @@ impl Worker {
         self.closing = closing;
         self.stopping = Some((platform::elapsed_clock(), false));
     }
+    /// Some pagers read ttyname(2), not stdin or /dev/tty. When only
+    /// that terminal enters noncanonical/no-echo mode it owns interactive input.
+    /// Send each byte to one terminal only, never duplicate input into the shell.
+    fn write_input(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        let primary = self.master.get_termios();
+        let secondary = self.stderr_master.get_termios();
+        let use_secondary = match (&primary, &secondary) {
+            (Some(a), Some(b)) => {
+                let a = a.local_flags.bits();
+                let b = b.local_flags.bits();
+                (a & libc::ICANON != 0 && b & libc::ICANON == 0)
+                    || (a & libc::ECHO != 0 && b & libc::ECHO == 0)
+            }
+            _ => false,
+        };
+        if !use_secondary {
+            return self.writer.write_all(bytes);
+        }
+        let (primary, secondary) = (primary.unwrap(), secondary.unwrap());
+        if primary.local_flags.bits() & libc::ISIG != 0
+            && secondary.local_flags.bits() & libc::ISIG != 0
+        {
+            // Only the controlling terminal can signal the foreground group.
+            // Preserve configured interrupt/quit/suspend characters for less.
+            let mut start = 0;
+            for (index, byte) in bytes.iter().enumerate() {
+                if let Some(control) =
+                    [libc::VINTR, libc::VQUIT, libc::VSUSP]
+                        .into_iter()
+                        .find(|control| {
+                            secondary.control_chars[*control] != 0
+                                && secondary.control_chars[*control] == *byte
+                        })
+                {
+                    if start < index {
+                        self.stderr_writer.write_all(&bytes[start..index])?;
+                    }
+                    self.writer.write_all(&[primary.control_chars[control]])?;
+                    start = index + 1;
+                }
+            }
+            if start < bytes.len() {
+                self.stderr_writer.write_all(&bytes[start..])?;
+            }
+            Ok(())
+        } else {
+            self.stderr_writer.write_all(bytes)
+        }
+    }
     fn output(&mut self, channel: Channel, bytes: &[u8]) {
         let filtered = self.protocol_guard[channel as usize].filter(bytes);
         let bytes = filtered.as_slice();
@@ -698,10 +750,10 @@ impl Worker {
         if self.observer.visible_activity {
             self.last_output = platform::elapsed_clock();
         }
-        for event in self.core_events.try_iter() {
+        while let Ok(event) = self.core_events.try_recv() {
             match event {
                 CoreEvent::PtyWrite(s) => {
-                    let _ = self.writer.write_all(s.as_bytes());
+                    let _ = self.write_input(s.as_bytes());
                 }
                 CoreEvent::Title(title) => self.state.lock().unwrap().title = title,
                 CoreEvent::ColorRequest(index, f) => {
@@ -715,7 +767,7 @@ impl Worker {
                             _ => ansi::Color::Named(ansi::NamedColor::Foreground),
                         }),
                     };
-                    let _ = self.writer.write_all(f(ansi::Rgb { r, g, b }).as_bytes());
+                    let _ = self.write_input(f(ansi::Rgb { r, g, b }).as_bytes());
                 }
                 CoreEvent::TextAreaSizeRequest(f) => {
                     let s = self.state.lock().unwrap();
@@ -727,7 +779,7 @@ impl Worker {
                         cell_height: 20,
                     });
                     drop(s);
-                    let _ = self.writer.write_all(response.as_bytes());
+                    let _ = self.write_input(response.as_bytes());
                 }
                 _ => {}
             }
@@ -854,7 +906,7 @@ impl Worker {
         loop {
             select! {
                 recv(self.rx)->control=>match control{
-                    Ok(Control::Input(bytes))=>{if self.exit.is_none(){self.clear_attention();self.state.lock().unwrap().terminal.scroll_display(alacritty_terminal::grid::Scroll::Bottom);if let Err(e)=self.writer.write_all(&bytes){self.emit(Event::Error{message:e.to_string()});}}},
+                    Ok(Control::Input(bytes))=>{if self.exit.is_none(){self.clear_attention();self.state.lock().unwrap().terminal.scroll_display(alacritty_terminal::grid::Scroll::Bottom);if let Err(e)=self.write_input(&bytes){self.emit(Event::Error{message:e.to_string()});}}},
                     Ok(Control::Resize(rows,cols))=>{
                         let _=self.master.resize(PtySize{rows,cols,pixel_width:0,pixel_height:0});let _=self.stderr_master.resize(PtySize{rows,cols,pixel_width:0,pixel_height:0});let mut s=self.state.lock().unwrap();s.terminal.resize(terminal::Size{rows:rows as usize,cols:cols as usize});s.changed+=1;
                     },
@@ -881,7 +933,12 @@ impl Worker {
                 }
             }
             if self.exit.is_none() {
-                for error in self.writer.errors.try_iter() {
+                for error in self
+                    .writer
+                    .errors
+                    .try_iter()
+                    .chain(self.stderr_writer.errors.try_iter())
+                {
                     if self.stopping.is_none() {
                         self.emit(Event::Error { message: error });
                     }

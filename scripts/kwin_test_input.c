@@ -30,7 +30,8 @@ int main(void){
         if(sscanf(line,"%15s %d %d",kind,&a,&b)!=3)return 2;
         if(strcmp(kind,"key")==0){if(a<8||a>255)return 2;org_kde_kwin_fake_input_keyboard_key(input,a-8,b);}
         else if(strcmp(kind,"motion")==0)org_kde_kwin_fake_input_pointer_motion_absolute(input,wl_fixed_from_int(a),wl_fixed_from_int(b));
-        else if(strcmp(kind,"button")==0){uint32_t code=a==1?0x110:a==2?0x112:0x111;org_kde_kwin_fake_input_button(input,code,b);}
+        else if(strcmp(kind,"button")==0){if(a<1||a>3)return 2;uint32_t code=a==1?0x110:a==2?0x112:0x111;org_kde_kwin_fake_input_button(input,code,b);}
+        else if(strcmp(kind,"axis")==0){if(a<0||a>1)return 2;org_kde_kwin_fake_input_axis(input,a,wl_fixed_from_int(b));}
         else return 2;
         if(wl_display_roundtrip(display)<0)return 3;
         puts("OK");fflush(stdout);
