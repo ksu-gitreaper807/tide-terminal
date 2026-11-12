@@ -52,6 +52,7 @@ jobs:
           cp target/debug/tide-terminal bin/tide-terminal
       - name: CLI and timer integration tests
         run: |
+          mkdir -p .ci-work qa-results
           python3 scripts/cli_smoke.py --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/cli.json"
           python3 scripts/timer_smoke.py --binary "$PWD/bin/tide-terminal" --launcher "$PWD/T_:" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/timer.json"
       - name: Record GUI validation boundary
