@@ -4,3 +4,5 @@
 /.ci-work/
 /qa-results/
 /text.txt
+
+/vendor/blesh/cache.d/
