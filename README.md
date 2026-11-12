@@ -24,6 +24,8 @@ Run the included Linux build from this directory:
 
 **Interface.** Tide uses a single compact tab bar with horizontal overflow, a quiet directory/status strip, and separate proportional UI and monospace terminal fonts. Run, History, and Settings open as centered dialogs. Active tabs stay visible when the window is resized, and dialog actions remain accessible at the 640×420 minimum size. Appearance changes are immediate; Save changes persists them.
 
+Each tab shows the last command launched in that terminal, including its arguments, and retains the title after success, failure or interruption. A fresh shell starts with its shell name. Long titles are shortened in the tab; hover to read the full command and working directory. Commands remain isolated to their own tabs.
+
 **Using the window.** Type directly into the terminal. Right arrow accepts an inline suggestion; Tab invokes the shell's own completion. Drag to select text and use Ctrl+Shift+C to copy. Ctrl+Shift+V pastes, with bracketed paste when the active program supports it. Programs requesting mouse reporting receive terminal mouse events; hold Shift to select terminal text instead.
 
 | Shortcut | Action |

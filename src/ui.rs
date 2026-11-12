@@ -503,7 +503,10 @@ impl App {
         }
     }
     fn poll(&mut self) {
-        for (i, pane) in self.panes.iter().enumerate() {
+        for (i, pane) in self.panes.iter_mut().enumerate() {
+            if let Some(label) = command_label(&pane.session.state.lock().unwrap().last_command) {
+                pane.label = label;
+            }
             for event in pane.session.events.try_iter() {
                 if let Some(log) = &mut self.event_log {
                     let _ = writeln!(log, "{}", serde_json::json!({"pane":i,"event":event}));
@@ -721,20 +724,14 @@ impl App {
                                                     if active { INK } else { MUTED },
                                                 );
                                             }
-                                            let label = if pane.label.chars().count() > 14 {
-                                                format!(
-                                                    "{}…",
-                                                    pane.label.chars().take(13).collect::<String>()
-                                                )
-                                            } else {
-                                                pane.label.clone()
-                                            };
-                                            ui.painter().text(
-                                                Pos2::new(rect.left() + 31., rect.center().y),
-                                                Align2::LEFT_CENTER,
-                                                label,
-                                                FontId::proportional(13.),
-                                                if active { INK } else { MUTED },
+                                            let text_color = if active { INK } else { MUTED };
+                                            let text_left = rect.left() + 31.;
+                                            let title = ui.fonts(|fonts| fonts.layout_job(tab_title_job(
+                                                &pane.label, (close_rect.left() - text_left - 4.).max(1.), text_color,
+                                            )));
+                                            ui.painter().galley(
+                                                Pos2::new(text_left, rect.center().y - title.size().y / 2.),
+                                                title, text_color,
                                             );
                                             if active
                                                 || response.hovered()
@@ -1816,7 +1813,8 @@ impl eframe::App for App {
                 .map(|(name, r)| (name.clone(), [r.min.x, r.min.y, r.max.x, r.max.y]))
                 .collect();
             let value = serde_json::json!({"ui":rects,"scale":ctx.pixels_per_point(),
-                "run_command":self.form.command,"run_timeout":self.form.timeout,"active_tab":self.active})
+                "run_command":self.form.command,"run_timeout":self.form.timeout,"active_tab":self.active,
+                "tabs":self.panes.iter().map(|pane| &pane.label).collect::<Vec<_>>()})
             .to_string();
             if value != self.last_qa {
                 if let Some(log) = &mut self.event_log {
@@ -1862,6 +1860,29 @@ impl eframe::App for App {
 
 fn terminal_input_id(session: u64) -> egui::Id {
     egui::Id::new(("terminal_input", session))
+}
+
+fn tab_title_job(label: &str, width: f32, color: Color32) -> egui::text::LayoutJob {
+    let mut job = egui::text::LayoutJob::simple_singleline(
+        label.to_owned(),
+        FontId::proportional(13.),
+        color,
+    );
+    job.wrap = egui::text::TextWrapping::truncate_at_width(width);
+    job
+}
+
+fn command_label(command: &str) -> Option<String> {
+    let label = command
+        .trim()
+        .chars()
+        .filter_map(|c| match c {
+            '\n' | '\r' | '\t' => Some(' '),
+            c if c.is_control() => None,
+            c => Some(c),
+        })
+        .collect::<String>();
+    (!label.is_empty()).then_some(label)
 }
 
 fn focus_terminal(ctx: &egui::Context, id: egui::Id) {
@@ -2072,6 +2093,43 @@ pub fn mouse_bytes(button: u8, row: usize, col: usize, pressed: bool, mode: Term
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn long_unicode_tab_titles_fit_without_covering_the_close_button() {
+        let ctx = egui::Context::default();
+        let _ = ctx.run(Default::default(), |ctx| {
+            for label in [
+                "WWWWWWWWWWWWWWWWWWWWWWWW",
+                "日本語の長いコマンドと引数 --option",
+                "grep -i hello /a/very/long/path",
+            ] {
+                let galley = ctx.fonts(|fonts| fonts.layout_job(tab_title_job(label, 85., INK)));
+                assert_eq!(galley.rows.len(), 1);
+                assert!(galley.size().x <= 85.);
+            }
+        });
+    }
+
+    #[test]
+    fn tab_command_labels_preserve_arguments_and_clean_control_characters() {
+        assert_eq!(
+            command_label("  grep -i 'hello world' file.txt\n"),
+            Some("grep -i 'hello world' file.txt".into())
+        );
+        assert_eq!(
+            command_label("printf a\n\tprintf b"),
+            Some("printf a  printf b".into())
+        );
+        assert_eq!(
+            command_label("日本語 --flag\x07"),
+            Some("日本語 --flag".into())
+        );
+        assert_eq!(
+            command_label("printf 'a   b'"),
+            Some("printf 'a   b'".into())
+        );
+        assert_eq!(command_label(" \n\t"), None);
+    }
 
     #[test]
     fn terminal_focus_survives_navigation_and_escape_across_frames() {

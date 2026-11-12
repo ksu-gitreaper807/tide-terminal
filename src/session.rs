@@ -152,6 +152,8 @@ pub struct State {
     pub title: String,
     pub cwd: String,
     pub command: String,
+    /// Retained after completion, independently of the bounded notification queue.
+    pub last_command: String,
     pub run_id: u64,
     pub running: bool,
     pub at_prompt: bool,
@@ -430,6 +432,11 @@ impl Session {
             title: options.shell_name(),
             cwd: options.cwd.to_string_lossy().into_owned(),
             command: if options.managed() {
+                options.label()
+            } else {
+                String::new()
+            },
+            last_command: if options.managed() {
                 options.label()
             } else {
                 String::new()
@@ -812,6 +819,9 @@ impl Worker {
                         // Fish may emit its native OSC 133 C before fish_preexec invokes our hook.
                         if s.command.is_empty() {
                             s.command = cmd.clone();
+                            if !cmd.trim().is_empty() {
+                                s.last_command = cmd.clone();
+                            }
                             drop(s);
                             self.emit(Event::CommandStarted {
                                 run_id: self.run_id,
@@ -835,6 +845,9 @@ impl Worker {
                     {
                         let mut s = self.state.lock().unwrap();
                         s.command = cmd.clone();
+                        if !cmd.trim().is_empty() {
+                            s.last_command = cmd.clone();
+                        }
                         s.at_prompt = false;
                         s.run_id = self.run_id;
                     }

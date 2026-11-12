@@ -41,6 +41,40 @@ fn finish(s: &Session) -> Vec<Event> {
 }
 
 #[test]
+fn last_command_survives_completion_and_missing_ui_notifications_in_each_shell() {
+    for shell in ["/bin/bash", "/bin/zsh", "/usr/bin/fish"] {
+        let directory = tempfile::tempdir().unwrap();
+        let mut options = Options::shell(shell, directory.path().to_path_buf());
+        options.launch = Launch::Shell {
+            path: shell.into(),
+            clean: true,
+        };
+        options.private = true;
+        let mut session = Session::spawn(options).unwrap();
+        // Notification consumers may close or fall behind. Titles read persistent state.
+        session.events = crossbeam_channel::never();
+        let ready = |last: &str| {
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(6) {
+                let state = session.state.lock().unwrap();
+                if state.at_prompt && state.last_command == last {
+                    return;
+                }
+                drop(state);
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            panic!("{shell}: last command/prompt not retained: {last:?}");
+        };
+        ready("");
+        for command in ["printf 'TITLE_STATE_OK\\n'", "false"] {
+            session.write(format!("{command}\n").into_bytes()).unwrap();
+            ready(command);
+            assert!(session.state.lock().unwrap().command.is_empty());
+        }
+    }
+}
+
+#[test]
 fn timer_colon_wrapper_works_in_all_integrated_shells() {
     for shell in ["/bin/bash", "/bin/zsh", "/usr/bin/fish"] {
         let directory = tempfile::tempdir().unwrap();

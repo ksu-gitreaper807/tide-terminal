@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--kwin-input-helper",type=Path)
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--focus-only", action="store_true")
+    parser.add_argument("--titles-only", action="store_true")
     parser.add_argument("--append-only", action="store_true")
     parser.add_argument("--pager-only", action="store_true")
     parser.add_argument("--btop-binary", type=Path)
@@ -282,6 +283,40 @@ def main():
             assert not event_after(index, lambda e:e['event']=='command_started' and 'DIALOG_MUST_NOT_RUN' in e['command'])
             results['gui_modal_cancel_restores_terminal_typing'] = 'passed'
 
+        def check_tab_titles():
+            first = ui_state()['active_tab']
+            command = "printf 'TITLE_ONE\\n'"
+            index = len(records())
+            text(command + '\n')
+            wait(lambda: event_after(index, lambda e:e['event']=='command_ended' and e['code']==0), 'first title command completes')
+            wait(lambda: ui_state().get('tabs', [])[first] == command, 'tab title retains the full last command')
+            results['gui_tab_title_tracks_completed_command'] = 'passed'
+            index = len(records())
+            key('t', ('Control_L', 'Shift_L'))
+            wait(lambda: event_after(index, lambda e:e['event']=='prompt'), 'new title test shell ready')
+            second = ui_state()['active_tab']
+            assert second != first
+            assert ui_state()['tabs'][second] == 'bash'
+            index = len(records())
+            text('false\n')
+            wait(lambda: event_after(index, lambda e:e['event']=='command_ended' and e['code']==1), 'failed command completes')
+            wait(lambda: ui_state()['tabs'][second] == 'false', 'failed command also updates the title')
+            assert ui_state()['tabs'][first] == command
+            click(f'tab_{first}')
+            assert ui_state()['tabs'][first] == command
+            results['gui_tab_titles_are_isolated_and_preserve_failed_commands'] = 'passed'
+            click(f'tab_{second}')
+            key('w', ('Control_L', 'Shift_L'))
+            index = start_run('sleep 30', timeout='0.2', shortcut=True)
+            managed = ui_state()['active_tab']
+            wait(lambda: ui_state()['tabs'][managed] == 'sleep 30', 'managed tab shows its full command')
+            wait(lambda: event_after(index, lambda e:e['event']=='exited'), 'managed title test stops')
+            assert ui_state()['tabs'][managed] == 'sleep 30'
+            assert ui_state()['tabs'][first] == command
+            results['gui_managed_tab_title_persists_after_exit'] = 'passed'
+            screenshot('command-titles.png')
+            key('w', ('Control_L', 'Shift_L'))
+
         def check_btop():
             import shlex
             # Keep process command lines out of diagnostic logs and screenshots.
@@ -472,6 +507,9 @@ def main():
             if args.focus_only:
                 check_terminal_focus()
                 return
+            if args.titles_only:
+                check_tab_titles()
+                return
             if args.append_only:
                 check_appending()
                 return
@@ -486,6 +524,7 @@ def main():
                 return
             if not args.run_input_only:
                 check_terminal_focus()
+                check_tab_titles()
                 check_appending()
                 check_pager()
             initial_scale = ui_state()["scale"]
