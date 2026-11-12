@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Integrated shells provide A_: as a function; this path also works inside Tide.
+set -euo pipefail
+if [[ -n ${TIDE_APPEND_SOCKET:-} ]]; then
+    printf '\033]777;tide;append\007'
+    if [[ ${TIDE_SPLIT_CAPTURE:-} == 1 ]]; then printf '\033]777;tide;append\007' >&2; fi
+fi
+if [[ -n ${TIDE_EXE:-} ]]; then
+    exec "$TIDE_EXE" append "$@"
+fi
+TIDE_APPEND_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$TIDE_APPEND_DIR/run.sh" append "$@"

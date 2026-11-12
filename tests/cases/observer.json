@@ -1,0 +1,493 @@
+[
+  {
+    "id": "password_0",
+    "stream": "Password:",
+    "hint": "May need a password"
+  },
+  {
+    "id": "password_1",
+    "stream": "[sudo] password for tide_fixture:",
+    "hint": "May need a password"
+  },
+  {
+    "id": "password_2",
+    "stream": "Enter passphrase for key fixture:",
+    "hint": "May need a password"
+  },
+  {
+    "id": "password_3",
+    "stream": "PIN:",
+    "hint": "May need a password"
+  },
+  {
+    "id": "password_4",
+    "stream": "PASSWORD:",
+    "hint": "May need a password"
+  },
+  {
+    "id": "password_5",
+    "stream": "\u001b[33mPassword:\u001b[0m",
+    "hint": "May need a password"
+  },
+  {
+    "id": "password_6",
+    "stream": "\rPassword:",
+    "hint": "May need a password"
+  },
+  {
+    "id": "confirmation_0",
+    "stream": "Continue?",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_1",
+    "stream": "Proceed?",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_2",
+    "stream": "[y/N]",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_3",
+    "stream": "(Y/n)",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_4",
+    "stream": "[yes/no]",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_5",
+    "stream": "(yes/no)",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_6",
+    "stream": "yes/no/fingerprint",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_7",
+    "stream": "Press Enter to continue",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_8",
+    "stream": "Press return",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "confirmation_9",
+    "stream": "\u001b[36mProceed? [y/N]\u001b[0m",
+    "hint": "May need confirmation"
+  },
+  {
+    "id": "fingerprint_0",
+    "stream": "Place your finger on the fingerprint reader",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_1",
+    "stream": "Place your finger on the fingerprint reader\r\n",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_2",
+    "stream": "Place your right index finger on the fingerprint reader\n",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_3",
+    "stream": "Place your left thumb on Goodix\n\n",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_4",
+    "stream": "Swipe your finger across the reader",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_5",
+    "stream": "Swipe your right thumb across the reader\n",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_6",
+    "stream": "Please touch the fingerprint sensor",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_7",
+    "stream": "Touch the fingerprint reader",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_8",
+    "stream": "Scan your fingerprint:",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_9",
+    "stream": "Scan your finger now",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_10",
+    "stream": "Press your finger on the reader",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "fingerprint_11",
+    "stream": "\u001b[33mPlace your finger on the fingerprint reader\u001b[0m\r\n",
+    "hint": "May need a fingerprint scan"
+  },
+  {
+    "id": "no_prompt_0",
+    "stream": "",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_1",
+    "stream": "Building...",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_2",
+    "stream": "100% complete\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_3",
+    "stream": "Fingerprint authentication successful\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_4",
+    "stream": "Fingerprint reader not found\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_5",
+    "stream": "ED25519 key fingerprint is SHA256:fixture\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_6",
+    "stream": "Scanning file fingerprints...\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_7",
+    "stream": "Place your fingers on the keyboard\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_8",
+    "stream": "Password:\rWorking..\u001b[K",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_9",
+    "stream": "Password:\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_10",
+    "stream": "Password:\r\nDone\r\n",
+    "hint": null
+  },
+  {
+    "id": "no_prompt_11",
+    "stream": "Place your finger on the fingerprint reader\nAuthentication complete\n",
+    "hint": null
+  },
+  {
+    "id": "alt_suppresses_47",
+    "stream": "\u001b[?47hPassword:",
+    "hint": null,
+    "alternate": true
+  },
+  {
+    "id": "alt_restores_47",
+    "stream": "\u001b[?47hPassword:\u001b[?47lContinue?",
+    "hint": "May need confirmation",
+    "alternate": false
+  },
+  {
+    "id": "alt_suppresses_1047",
+    "stream": "\u001b[?1047hPassword:",
+    "hint": null,
+    "alternate": true
+  },
+  {
+    "id": "alt_restores_1047",
+    "stream": "\u001b[?1047hPassword:\u001b[?1047lContinue?",
+    "hint": "May need confirmation",
+    "alternate": false
+  },
+  {
+    "id": "alt_suppresses_1049",
+    "stream": "\u001b[?1049hPassword:",
+    "hint": null,
+    "alternate": true
+  },
+  {
+    "id": "alt_restores_1049",
+    "stream": "\u001b[?1049hPassword:\u001b[?1049lContinue?",
+    "hint": "May need confirmation",
+    "alternate": false
+  },
+  {
+    "id": "text_utf8",
+    "stream": "日本 é🙂",
+    "text": "日本 é🙂"
+  },
+  {
+    "id": "text_colors",
+    "stream": "\u001b[31mred\u001b[0m",
+    "text": "red"
+  },
+  {
+    "id": "text_cr",
+    "stream": "hello\rY",
+    "text": "Yello"
+  },
+  {
+    "id": "text_backspace",
+    "stream": "abc\bZ",
+    "text": "abZ"
+  },
+  {
+    "id": "text_tab",
+    "stream": "a\tX",
+    "text": "a       X"
+  },
+  {
+    "id": "text_erase_right",
+    "stream": "abcdef\rXY\u001b[K",
+    "text": "XY"
+  },
+  {
+    "id": "text_line_rewrite",
+    "stream": "100%\r25%\u001b[K",
+    "text": "25%"
+  },
+  {
+    "id": "text_absolute_column",
+    "stream": "abc\u001b[7GX",
+    "text": "abc   X"
+  },
+  {
+    "id": "text_relative_column",
+    "stream": "abc\u001b[2DX",
+    "text": "aXc"
+  },
+  {
+    "id": "text_newline",
+    "stream": "one\r\ntwo",
+    "text": "one\ntwo"
+  },
+  {
+    "id": "text_screen_clear",
+    "stream": "old\u001b[2Jnew",
+    "text": "new"
+  },
+  {
+    "id": "text_osc_ignored",
+    "stream": "hi\u001b]2;Password:\u0007there",
+    "text": "hithere"
+  },
+  {
+    "id": "text_bell",
+    "stream": "ab\u0007cd",
+    "text": "abcd"
+  },
+  {
+    "id": "text_clear_scrollback",
+    "stream": "old\u001b[3Jnew",
+    "text": "new"
+  },
+  {
+    "id": "marker_prompt",
+    "stream": "\u001b]133;A\u0007",
+    "markers": [
+      [
+        "prompt"
+      ]
+    ]
+  },
+  {
+    "id": "marker_start",
+    "stream": "\u001b]133;C\u001b\\",
+    "markers": [
+      [
+        "start"
+      ]
+    ]
+  },
+  {
+    "id": "marker_end_success",
+    "stream": "\u001b]133;D;0\u0007",
+    "markers": [
+      [
+        "end",
+        0
+      ]
+    ]
+  },
+  {
+    "id": "marker_end_failure",
+    "stream": "\u001b]133;D;42\u0007",
+    "markers": [
+      [
+        "end",
+        42
+      ]
+    ]
+  },
+  {
+    "id": "marker_end_negative",
+    "stream": "\u001b]133;D;-1\u0007",
+    "markers": [
+      [
+        "end",
+        -1
+      ]
+    ]
+  },
+  {
+    "id": "marker_osc133_url",
+    "stream": "\u001b]133;C;cmdline_url=echo%20hi%3B%CE%BB\u0007",
+    "markers": [
+      [
+        "command",
+        "echo hi;λ"
+      ],
+      [
+        "start"
+      ]
+    ]
+  },
+  {
+    "id": "marker_osc133_bad_url",
+    "stream": "\u001b]133;C;cmdline_url=%ZZ\u0007",
+    "markers": [
+      [
+        "start"
+      ]
+    ]
+  },
+  {
+    "id": "marker_cwd_osc7",
+    "stream": "\u001b]7;file://localhost/tmp/tide%20fixture\u0007",
+    "markers": [
+      [
+        "cwd",
+        "/tmp/tide fixture"
+      ]
+    ]
+  },
+  {
+    "id": "marker_cwd_utf8",
+    "stream": "\u001b]7;file://host/tmp/%E6%97%A5\u0007",
+    "markers": [
+      [
+        "cwd",
+        "/tmp/日"
+      ]
+    ]
+  },
+  {
+    "id": "marker_cwd_bad_escape",
+    "stream": "\u001b]7;file://host/tmp/%Q0\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_cwd_truncated_escape",
+    "stream": "\u001b]7;file://host/tmp/%2\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_cwd_bad_utf8",
+    "stream": "\u001b]7;file://host/tmp/%FF\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_non_file_url",
+    "stream": "\u001b]7;https://host/tmp\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_unknown_osc",
+    "stream": "\u001b]999;tide;input;\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_unknown_tide",
+    "stream": "\u001b]777;other;input;\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_input_request",
+    "stream": "\u001b]777;tide;input;\u0007",
+    "markers": [
+      [
+        "input",
+        "Input requested"
+      ]
+    ]
+  },
+  {
+    "id": "marker_bad_base64",
+    "stream": "\u001b]777;tide;command;@@@\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_bad_base64_utf8",
+    "stream": "\u001b]777;tide;command;/w==\u0007",
+    "markers": []
+  },
+  {
+    "id": "marker_command_bel",
+    "stream": "\u001b]777;tide;command;cHJpbnRmICJmaXh0dXJlIg==\u0007",
+    "markers": [
+      [
+        "command",
+        "printf \"fixture\""
+      ]
+    ]
+  },
+  {
+    "id": "marker_command_st",
+    "stream": "\u001b]777;tide;command;cHJpbnRmICJmaXh0dXJlIg==\u001b\\",
+    "markers": [
+      [
+        "command",
+        "printf \"fixture\""
+      ]
+    ]
+  },
+  {
+    "id": "marker_cwd_bel",
+    "stream": "\u001b]777;tide;cwd;L3RtcC/ml6UgZml4dHVyZQ==\u0007",
+    "markers": [
+      [
+        "cwd",
+        "/tmp/日 fixture"
+      ]
+    ]
+  },
+  {
+    "id": "marker_cwd_st",
+    "stream": "\u001b]777;tide;cwd;L3RtcC/ml6UgZml4dHVyZQ==\u001b\\",
+    "markers": [
+      [
+        "cwd",
+        "/tmp/日 fixture"
+      ]
+    ]
+  }
+]

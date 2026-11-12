@@ -1,0 +1,14 @@
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub mod append;
+pub mod append_cli;
+pub mod capture;
+pub mod config;
+pub mod history;
+pub mod observer;
+pub mod platform;
+pub mod rules;
+pub mod session;
+pub mod split_capture;
+mod split_pty;
+mod stream_frame;
+pub mod terminal;

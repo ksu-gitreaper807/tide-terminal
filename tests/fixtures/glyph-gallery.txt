@@ -1,0 +1,23 @@
+TIDE SYMBOL COVERAGE
+Each icon stays inside its terminal cell.
+
+cod                
+custom             
+dev                
+extra              
+fa                 
+fae                
+iec        ⏻ ⭘ ⏽ ⏾ ⏼
+linux              
+md         󰇉 󱛠 󱌨 󱌩 󱌪 󱌫 󰀃 󱔸 󱔹
+oct                
+pl                 
+ple                
+pom                
+seti               
+weather            
+
+File icons         󰲂 󰉍
+Powerline       
+Unicode      ↑ ↓ ← → ⇧ ⏻ ♔ ♕ ♘ ✓ ⚠
+Plots        ⠁ ⠉ ⠋ ⠛ ⠿ ⣿ ▁ ▂ ▄ ▆ █

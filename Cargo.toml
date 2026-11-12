@@ -1,0 +1,43 @@
+[package]
+name = "tide-terminal"
+version = "0.1.0"
+edition = "2024"
+description = "A native Rust terminal with shell integration, attention alerts, and command rules"
+license = "MIT"
+
+[features]
+default = ["desktop"]
+desktop = ["dep:eframe", "dep:image"]
+
+[dependencies]
+alacritty_terminal = "0.26"
+anyhow = "1"
+base64 = "0.22"
+humantime = "2"
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+clap = { version = "4", features = ["derive"] }
+crossbeam-channel = "0.5"
+eframe = { version = "0.31.1", default-features = false, features = ["default_fonts", "wgpu", "wayland", "x11"], optional = true }
+libc = "0.2"
+portable-pty = "0.9"
+regex = "1"
+rusqlite = { version = "0.38", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+tempfile = "3"
+vte = "0.15"
+
+[patch.crates-io]
+egui-winit = { path = "vendor/egui-winit" }
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+lto = "thin"
+strip = true
+
+[dev-dependencies]
+proptest = "1.12.0"
+

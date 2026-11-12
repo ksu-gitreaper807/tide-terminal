@@ -1,0 +1,8 @@
+{
+  "erase_display_above": {
+    "component": "alacritty_terminal 0.26.0, Term::clear_screen(ClearMode::Above)",
+    "reason": "CSI 1 J at row two clears the current line through the cursor but leaves row one unchanged. The dependency uses cursor.line > 1 before clearing earlier rows; zero-based row one also needs that clear. This is an upstream semantic gap, not the expected terminal behavior.",
+    "reference": "https://invisible-island.net/xterm/ctlseqs/ctlseqs.html",
+    "observed_screen": ["abc", "  f", "ghi", ""]
+  }
+}

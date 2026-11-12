@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a7bbc74931eb51d8ee873664fd8c7f88078d89f82c876a9f8ea69a18fb8aac47 # malformed UTF-8 tail regression
+cc 7c7aa57145bff16a2d179200e108dfd56f97cd5bcdf95312942a529e90c1ce1c # shrinks to bytes = [0, 0, 0, 0, 0, 0, 0, 0, 32, 32, 32, 32, 32, 32, 32, 32, 33, 13], widths = [1]

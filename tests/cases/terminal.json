@@ -1,0 +1,828 @@
+[
+  {
+    "id": "ascii",
+    "stream": "hello",
+    "screen": [
+      "hello"
+    ],
+    "cursor": [
+      0,
+      5
+    ]
+  },
+  {
+    "id": "carriage_return",
+    "stream": "hello\rY",
+    "screen": [
+      "Yello"
+    ],
+    "cursor": [
+      0,
+      1
+    ]
+  },
+  {
+    "id": "linefeed_preserves_column",
+    "stream": "ab\nX",
+    "screen": [
+      "ab",
+      "  X"
+    ],
+    "cursor": [
+      1,
+      3
+    ]
+  },
+  {
+    "id": "crlf",
+    "stream": "ab\r\nX",
+    "screen": [
+      "ab",
+      "X"
+    ],
+    "cursor": [
+      1,
+      1
+    ]
+  },
+  {
+    "id": "backspace",
+    "stream": "abc\bZ",
+    "screen": [
+      "abZ"
+    ],
+    "cursor": [
+      0,
+      3
+    ]
+  },
+  {
+    "id": "tab_stop",
+    "stream": "a\tX",
+    "screen": [
+      "a       X"
+    ],
+    "cursor": [
+      0,
+      9
+    ]
+  },
+  {
+    "id": "cup",
+    "stream": "\u001b[3;5HX",
+    "screen": [
+      "",
+      "",
+      "    X"
+    ],
+    "cursor": [
+      2,
+      5
+    ]
+  },
+  {
+    "id": "cup_zero",
+    "stream": "\u001b[0;0HX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ]
+  },
+  {
+    "id": "cursor_up",
+    "stream": "\u001b[3;4H\u001b[2AX",
+    "screen": [
+      "   X"
+    ],
+    "cursor": [
+      0,
+      4
+    ]
+  },
+  {
+    "id": "cursor_down",
+    "stream": "\u001b[2BX",
+    "screen": [
+      "",
+      "",
+      "X"
+    ],
+    "cursor": [
+      2,
+      1
+    ]
+  },
+  {
+    "id": "cursor_forward",
+    "stream": "\u001b[4CX",
+    "screen": [
+      "    X"
+    ],
+    "cursor": [
+      0,
+      5
+    ]
+  },
+  {
+    "id": "cursor_backward",
+    "stream": "abcd\u001b[2DX",
+    "screen": [
+      "abXd"
+    ],
+    "cursor": [
+      0,
+      3
+    ]
+  },
+  {
+    "id": "cursor_next_line",
+    "stream": "abc\u001b[2EX",
+    "screen": [
+      "abc",
+      "",
+      "X"
+    ],
+    "cursor": [
+      2,
+      1
+    ]
+  },
+  {
+    "id": "cursor_previous_line",
+    "stream": "\u001b[3;5H\u001b[2FX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ]
+  },
+  {
+    "id": "horizontal_absolute",
+    "stream": "abc\u001b[7GX",
+    "screen": [
+      "abc   X"
+    ],
+    "cursor": [
+      0,
+      7
+    ]
+  },
+  {
+    "id": "vertical_absolute",
+    "stream": "ab\u001b[3dX",
+    "screen": [
+      "ab",
+      "",
+      "  X"
+    ],
+    "cursor": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "cursor_clamp",
+    "stream": "\u001b[999;999HX",
+    "screen": [
+      "",
+      "",
+      "",
+      "           X"
+    ],
+    "cursor": [
+      3,
+      11
+    ]
+  },
+  {
+    "id": "save_restore_dec",
+    "stream": "ab\u001b7\u001b[4;1Hq\u001b8X",
+    "screen": [
+      "abX",
+      "",
+      "",
+      "q"
+    ],
+    "cursor": [
+      0,
+      3
+    ]
+  },
+  {
+    "id": "erase_line_right",
+    "stream": "abcdef\u001b[1;3H\u001b[K",
+    "screen": [
+      "ab"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "erase_line_left",
+    "stream": "abcdef\u001b[1;3H\u001b[1K",
+    "screen": [
+      "   def"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "erase_line_all",
+    "stream": "abcdef\u001b[1;3H\u001b[2K",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "erase_display_all",
+    "stream": "abc\r\ndef\u001b[2J",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      1,
+      3
+    ]
+  },
+  {
+    "id": "erase_display_below",
+    "stream": "abc\r\ndef\r\nghi\u001b[2;2H\u001b[J",
+    "screen": [
+      "abc",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ]
+  },
+  {
+    "id": "erase_display_above",
+    "stream": "abc\r\ndef\r\nghi\u001b[2;2H\u001b[1J",
+    "screen": [
+      "",
+      "  f",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ]
+  },
+  {
+    "id": "delete_characters",
+    "stream": "abcdef\u001b[1;3H\u001b[2P",
+    "screen": [
+      "abef"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "insert_characters",
+    "stream": "abcd\u001b[1;3H\u001b[2@",
+    "screen": [
+      "ab  cd"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "erase_characters",
+    "stream": "abcdef\u001b[1;3H\u001b[2X",
+    "screen": [
+      "ab  ef"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "insert_mode",
+    "stream": "abcd\u001b[1;3H\u001b[4hX\u001b[4l",
+    "screen": [
+      "abXcd"
+    ],
+    "cursor": [
+      0,
+      3
+    ]
+  },
+  {
+    "id": "insert_line",
+    "stream": "a\r\nb\r\nc\u001b[2;1H\u001b[L",
+    "screen": [
+      "a",
+      "",
+      "b",
+      "c"
+    ],
+    "cursor": [
+      1,
+      0
+    ]
+  },
+  {
+    "id": "delete_line",
+    "stream": "a\r\nb\r\nc\u001b[2;1H\u001b[M",
+    "screen": [
+      "a",
+      "c"
+    ],
+    "cursor": [
+      1,
+      0
+    ]
+  },
+  {
+    "id": "scroll_up",
+    "stream": "a\r\nb\r\nc\r\nd\u001b[S",
+    "screen": [
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      3,
+      1
+    ]
+  },
+  {
+    "id": "scroll_down",
+    "stream": "a\r\nb\r\nc\r\nd\u001b[T",
+    "screen": [
+      "",
+      "a",
+      "b",
+      "c"
+    ],
+    "cursor": [
+      3,
+      1
+    ]
+  },
+  {
+    "id": "scroll_region",
+    "stream": "a\r\nb\r\nc\r\nd\u001b[2;3r\u001b[3;1H\n",
+    "screen": [
+      "a",
+      "c",
+      "",
+      "d"
+    ],
+    "cursor": [
+      2,
+      0
+    ]
+  },
+  {
+    "id": "reverse_index",
+    "stream": "\u001b[H\u001bMZ",
+    "screen": [
+      "Z"
+    ],
+    "cursor": [
+      0,
+      1
+    ]
+  },
+  {
+    "id": "wrap",
+    "stream": "abcdefghijklm",
+    "screen": [
+      "abcdefghijkl",
+      "m"
+    ],
+    "cursor": [
+      1,
+      1
+    ]
+  },
+  {
+    "id": "autowrap_disabled",
+    "stream": "\u001b[?7labcdefghijklm",
+    "screen": [
+      "abcdefghijkm"
+    ],
+    "cursor": [
+      0,
+      11
+    ]
+  },
+  {
+    "id": "wide_cjk",
+    "stream": "日本",
+    "screen": [
+      "日本"
+    ],
+    "cursor": [
+      0,
+      4
+    ]
+  },
+  {
+    "id": "combining_accent",
+    "stream": "é",
+    "screen": [
+      "é"
+    ],
+    "cursor": [
+      0,
+      1
+    ]
+  },
+  {
+    "id": "emoji",
+    "stream": "🙂",
+    "screen": [
+      "🙂"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  },
+  {
+    "id": "braille_box",
+    "stream": "⠁⣿─│",
+    "screen": [
+      "⠁⣿─│"
+    ],
+    "cursor": [
+      0,
+      4
+    ]
+  },
+  {
+    "id": "nerd_private_use",
+    "stream": "",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      1
+    ]
+  },
+  {
+    "id": "alt_restores_primary",
+    "stream": "main\u001b[?1049heditor\u001b[?1049l",
+    "screen": [
+      "main"
+    ],
+    "cursor": [
+      0,
+      4
+    ]
+  },
+  {
+    "id": "alt_mode",
+    "stream": "\u001b[?1049hX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "modes": {
+      "alt_screen": true
+    }
+  },
+  {
+    "id": "bracketed_paste",
+    "stream": "\u001b[?2004h",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ],
+    "modes": {
+      "bracketed_paste": true
+    }
+  },
+  {
+    "id": "application_cursor",
+    "stream": "\u001b[?1h",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ],
+    "modes": {
+      "app_cursor": true
+    }
+  },
+  {
+    "id": "cursor_hidden",
+    "stream": "\u001b[?25l",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ],
+    "modes": {
+      "show_cursor": false
+    }
+  },
+  {
+    "id": "sgr_red",
+    "stream": "\u001b[31mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "fg": [
+          236,
+          118,
+          125
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sgr_truecolor",
+    "stream": "\u001b[38;2;12;34;56mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "fg": [
+          12,
+          34,
+          56
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sgr_256",
+    "stream": "\u001b[38;5;196mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "fg": [
+          255,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sgr_gray",
+    "stream": "\u001b[38;5;244mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "fg": [
+          128,
+          128,
+          128
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sgr_background",
+    "stream": "\u001b[48;2;11;22;33mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "bg": [
+          11,
+          22,
+          33
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sgr_inverse",
+    "stream": "\u001b[7mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "fg": [
+          15,
+          20,
+          28
+        ],
+        "bg": [
+          213,
+          220,
+          229
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sgr_hidden",
+    "stream": "\u001b[8mSECRET",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      6
+    ]
+  },
+  {
+    "id": "sgr_underline_strike",
+    "stream": "\u001b[4;9mX",
+    "screen": [
+      "X"
+    ],
+    "cursor": [
+      0,
+      1
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 0,
+        "underline": true,
+        "strike": true
+      }
+    ]
+  },
+  {
+    "id": "sgr_reset",
+    "stream": "\u001b[31mR\u001b[0mX",
+    "screen": [
+      "RX"
+    ],
+    "cursor": [
+      0,
+      2
+    ],
+    "cells": [
+      {
+        "row": 0,
+        "col": 1,
+        "fg": [
+          213,
+          220,
+          229
+        ],
+        "underline": false,
+        "strike": false
+      }
+    ]
+  },
+  {
+    "id": "dec_line_graphics",
+    "stream": "\u001b(0lqk\u001b(B",
+    "screen": [
+      "┌─┐"
+    ],
+    "cursor": [
+      0,
+      3
+    ]
+  },
+  {
+    "id": "osc_title_bel",
+    "stream": "\u001b]2;Tide fixture\u0007",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ],
+    "title": "Tide fixture"
+  },
+  {
+    "id": "osc_title_st",
+    "stream": "\u001b]0;Tide fixture\u001b\\",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ],
+    "title": "Tide fixture"
+  },
+  {
+    "id": "dsr_cursor",
+    "stream": "\u001b[3;4H\u001b[6n",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "replies": [
+      "\u001b[3;4R"
+    ]
+  },
+  {
+    "id": "dsr_status",
+    "stream": "\u001b[5n",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ],
+    "replies": [
+      "\u001b[0n"
+    ]
+  },
+  {
+    "id": "reset_terminal",
+    "stream": "abc\u001bc",
+    "screen": [
+      ""
+    ],
+    "cursor": [
+      0,
+      0
+    ]
+  },
+  {
+    "id": "cancel_incomplete_csi",
+    "stream": "\u001b[31\u0018OK",
+    "screen": [
+      "OK"
+    ],
+    "cursor": [
+      0,
+      2
+    ]
+  }
+]

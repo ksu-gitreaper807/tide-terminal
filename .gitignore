@@ -1,0 +1,6 @@
+/target/
+*.sqlite3*
+/bin/
+/.ci-work/
+/qa-results/
+/text.txt

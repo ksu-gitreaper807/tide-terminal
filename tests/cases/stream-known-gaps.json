@@ -1,0 +1,29 @@
+{
+  "malformed_utf8_read_boundary": {
+    "component": "vte 0.15.0 parser, used by both the core and observer",
+    "reason": "A split after UTF-8 byte CE, followed by 9B 48 84, loses the printable H that a whole-stream feed retains. Both the core and observer use vte 0.15.0. CAN does not restore the lost character. A subsequent explicit cancel, reset and clear resynchronizes both views for new output. This is a tracked malformed-input decoding deviation; valid UTF-8 streams retain the stronger chunk-invariance oracle.",
+    "chunks": [
+      [
+        206
+      ],
+      [
+        155,
+        72,
+        132
+      ]
+    ],
+    "whole_screen": [
+      "ΛH",
+      "",
+      "",
+      ""
+    ],
+    "fragmented_screen": [
+      "Λ",
+      "",
+      "",
+      ""
+    ],
+    "recovery_sequence": "\u0018\u0018\u001bc\u001b[2J\u001b[HRECOVERY"
+  }
+}

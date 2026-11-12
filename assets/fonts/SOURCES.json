@@ -1,0 +1,35 @@
+{
+  "nerd_fonts_release": {
+    "tag": "v3.5.1",
+    "url": "https://github.com/ryanoasis/nerd-fonts/releases/tag/v3.5.1",
+    "asset": "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/NerdFontsSymbolsOnly.zip"
+  },
+  "fonts": [
+    {
+      "file": "SymbolsNerdFontMono-Regular.ttf",
+      "version": "Nerd Fonts 3.5.1",
+      "sha256": "fe471e538392f51910faab985fa8e192a39dd3426125edd15b71b3680df0e749"
+    },
+    {
+      "file": "NotoSansSymbols-Regular.ttf",
+      "version": "2.003",
+      "sha256": "d0e98e9a2c046594c5021437273943be7e79e0fd980fde125279e22302212595"
+    },
+    {
+      "file": "NotoSansSymbols2-Regular.ttf",
+      "version": "2.008",
+      "sha256": "c4a0a80f0041ce4be81e2478faad22776d23edb98ae3f0d19bd37044820ecf9d"
+    },
+    {
+      "file": "DejaVuSans.ttf",
+      "version": "2.37",
+      "sha256": "6038a160b491e121c1f12c7bccb4a9c8730296e3adc1086a059404ed84b7451c"
+    }
+  ],
+  "catalogues": {
+    "nerd_unique_codepoints": 10617,
+    "eza_version": "0.23.5",
+    "eza_unique_icons": 268,
+    "noto_symbol_codepoints": 3395
+  }
+}
