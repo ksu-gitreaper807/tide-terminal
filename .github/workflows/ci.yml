@@ -44,6 +44,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-rust-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-rust-${{ steps.rust.outputs.version }}-
       - name: Formatting
         run: cargo fmt --check
       - name: Clippy
