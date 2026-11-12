@@ -1,0 +1,1738 @@
+{
+  "schema": 1,
+  "sources": {
+    "alacritty": {
+      "url": "https://github.com/alacritty/alacritty",
+      "revision": "94e7c8874e526b1e67b349d9ba30ddf81669119e"
+    },
+    "libvterm": {
+      "url": "https://github.com/neovim/libvterm",
+      "revision": "934bc2fbf21800ac3458a499df8820ca5fb45fd3"
+    }
+  },
+  "cases": {
+    "alacritty": 45,
+    "libvterm": 8
+  },
+  "files": [
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/alt_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/alt_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 21636,
+      "sha256": "ebd6cce7283817296986298b5ded99d0543db21ced0d2675c3feaf2c8f475090",
+      "stored_sha256": "d35a8b05f1d8be7d41aa81b89bbfe53e1825e82bce1d2d7dbaa12a5840200da0"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/alt_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/alt_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/alt_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/alt_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 286981,
+      "sha256": "3bdf7716d24882658a1b00b3c09665fa72d5ecf6579e46f51a856d737a020fbc",
+      "stored_sha256": "bff57ba9f6b930c0011faa7ba7b441a0b13d34ffc82f578f51581d2f357d6bc1"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/alt_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/alt_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "7992387a4dcb6e1b347cb775e65c3c34c1c2e2be2499886fc54c10a07ecf3986",
+      "stored_sha256": "33ffced48b341901676b75922f27fe290d319bf596ecfb5876f19da188a0c2ea"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/clear_underline/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/clear_underline/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 178,
+      "sha256": "6d1f6ce3efdf4c1b22beaa40eba31fe340ee1d94c7ab8576e47f548cd51523f7",
+      "stored_sha256": "e77a4a79dd3184f0108c4293f41690d232cf1a90d39b03d2be6b700769f7eaf5"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/clear_underline/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/clear_underline/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/clear_underline/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/clear_underline/grid.json.gz",
+      "gzip": true,
+      "bytes": 191228,
+      "sha256": "78ceb6f06dddf3a5f98d5d988b1f376e8d3db2d9072b30a4652f40c12c06546b",
+      "stored_sha256": "cd0006652359b63a51de294cb27489429faecc914611c48fffbd9a6a792e0fc0"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/clear_underline/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/clear_underline/size.json.gz",
+      "gzip": true,
+      "bytes": 33,
+      "sha256": "4ef597c743eff62f5ff37fa4d6ec1562e1a9c1ce87e938fddc090854549c5684",
+      "stored_sha256": "fa4074ff0324f14c7639287536c426d511414ef68f9813f6f463d26cc979e67e"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 201,
+      "sha256": "f83c72d4d55d28b903c8dd85080482f0417818b182bfee6fc6d3633f29146107",
+      "stored_sha256": "ce03975504ed8ac9a3cbd337ac512229b575b8fb294ae950e40832031c165277"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 608886,
+      "sha256": "b8262419c7ec21e303ed7914d1fd09fcd4caa25e2c87cf19464c0cf6cb673e40",
+      "stored_sha256": "6b5ce6d41c6083d8446398f4d9e9a6ea9f86741c8b0fb1ec1c68fbcc5b17b8b6"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "f5c11e3c1022b53a13635db49216b41274b68d318460f8b4a14b2817a8650074",
+      "stored_sha256": "a6de84d6281829bbc4b59a071baa5bc2202f42c476f19ab826216a1c6acb6aeb"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_underline/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_underline/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1747,
+      "sha256": "b7179258f8c4f456b257f462c45f3d53bc7b0b80829cccca15bd5090a1e3ac81",
+      "stored_sha256": "88b6f15a65314e283d4272c808b3a9c0342d96c233fb29b2bbf53f75ef38f585"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_underline/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_underline/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_underline/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_underline/grid.json.gz",
+      "gzip": true,
+      "bytes": 569559,
+      "sha256": "f47c852f45229eac9abc3d69259ff156d555d725aeae5dd17f462f90911f6133",
+      "stored_sha256": "04d11a2aa8baa046f4e8420241ceb8277282e272cf8f982cfb7a6f7b939cc16f"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/colored_underline/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/colored_underline/size.json.gz",
+      "gzip": true,
+      "bytes": 33,
+      "sha256": "dff91a21bb554f266e26b2a927fc27323feb483b1a1f0d5dee9144323ae4a855",
+      "stored_sha256": "2868bc24806c70feb15deb2bd8f92c97d74954dc81a7b7f306ed07ce755bdf2d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/csi_rep/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/csi_rep/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 981,
+      "sha256": "2cf940d066013895328b0e184bc62008446c4c48aff00d94bf584ac052747faa",
+      "stored_sha256": "fbab72e654a1ca49616b8f36b8374fe8dfcae034c6c05943d76472bb316ce557"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/csi_rep/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/csi_rep/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/csi_rep/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/csi_rep/grid.json.gz",
+      "gzip": true,
+      "bytes": 274688,
+      "sha256": "22d779c6188b02311d0f5e21c3f239a4bec5451756debaedae2076be4f451050",
+      "stored_sha256": "a6ee323dea152b66c47fdf3e39afdadb006dec884dfdc1e73081318427556be9"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/csi_rep/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/csi_rep/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/decaln_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/decaln_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 551,
+      "sha256": "b807deb690bbee7151c7fac10426c094bb0491e902f1d3a6b4f326878c2d6a23",
+      "stored_sha256": "07776a9ba22103365cf356f0eaf2860e59bb0f5a02e11f85a86708e59cb456cf"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/decaln_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/decaln_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/decaln_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/decaln_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 287443,
+      "sha256": "605452d29a61a06c32e529a8a6e9b6acd1db5de6f187d05c122f74589d1c9111",
+      "stored_sha256": "7d6ba92316ee90566eabbd0e845ee815a81dc3c515fe27e3bd6912772f0c5de6"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/decaln_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/decaln_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "7992387a4dcb6e1b347cb775e65c3c34c1c2e2be2499886fc54c10a07ecf3986",
+      "stored_sha256": "33ffced48b341901676b75922f27fe290d319bf596ecfb5876f19da188a0c2ea"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/deccolm_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/deccolm_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1707,
+      "sha256": "37e3f163063d7a75317473b4ab51655b5f2f9fb4fb7422245a73bc65962daf05",
+      "stored_sha256": "70fb011da57c630528874f053c710ab91675101251a8177919d98b3dec3d58f1"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/deccolm_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/deccolm_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/deccolm_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/deccolm_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 288004,
+      "sha256": "b5ee5c17735566877eac4053304b1945ea2abd59877617d0e6a94e0f78c600d5",
+      "stored_sha256": "5683d260786811ec227a9196a8d895d47fd1f7649bd5f9ba70b160a769880733"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/deccolm_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/deccolm_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "7992387a4dcb6e1b347cb775e65c3c34c1c2e2be2499886fc54c10a07ecf3986",
+      "stored_sha256": "33ffced48b341901676b75922f27fe290d319bf596ecfb5876f19da188a0c2ea"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_chars_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_chars_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 395,
+      "sha256": "b06717d4c8a8125a05977accb55c6282a17cb788346badd0ccb3aa2c9e8b2d7a",
+      "stored_sha256": "4d061bb410ba24155be038acc0355c9e0830ee36fc7d5b5d64a5ee88734bd03b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_chars_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_chars_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_chars_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_chars_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 288421,
+      "sha256": "a3f47a8c28027ab30fba19ee09a48b72686c332238d168c89ec4a7ed01f82de1",
+      "stored_sha256": "45329474ee2c3f3e88174e4569fdffec787cce54f0bfad358219721cee674d2a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_chars_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_chars_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "7992387a4dcb6e1b347cb775e65c3c34c1c2e2be2499886fc54c10a07ecf3986",
+      "stored_sha256": "33ffced48b341901676b75922f27fe290d319bf596ecfb5876f19da188a0c2ea"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_lines/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_lines/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 2290,
+      "sha256": "97b64aa3d6abce94851fb86edcde9dd9e70870d2bb8719bf9d1a168f609af2c3",
+      "stored_sha256": "fa2472d679b8dced9df0285e51cec369d7c81d3ddde5dcda95bcd25ce504f856"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_lines/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_lines/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_lines/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_lines/grid.json.gz",
+      "gzip": true,
+      "bytes": 324396,
+      "sha256": "f39acb1861f7c6bd05dd3ed98e2c124f6afe1c6399cff3ebbecadabf3d007185",
+      "stored_sha256": "e8985a62a2bd15d0098857296d7d5c054944508be1d2ff248b8b7e410c2b641b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/delete_lines/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/delete_lines/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "d6362bc12effdbe34c56590ed3f812d9174082bd2018148b0ff512e658d7c744",
+      "stored_sha256": "0339c13fa360a5b218736bac2ebebb56f0103b69c1e18f1ce61bb66f31d88b06"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_chars_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_chars_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 575,
+      "sha256": "54ab3dd5162101decb11f864a0640358f53e7879958a66d6ba2c8fae50c891a7",
+      "stored_sha256": "8eb9c7fcd17edccfb984510c4c0f52060a26f7eef12c4bc81ff6a6690ac1e2d9"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_chars_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_chars_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_chars_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_chars_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 289899,
+      "sha256": "d996172be6773425954ca272bc150bd7a2bc83b3adf5a51c1720b0a69fe8e4bb",
+      "stored_sha256": "e1a4c6c70dec784b7bd50ee4854600c79b170250fc09e1cbdfd73590a3e4e1bd"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_chars_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_chars_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "7992387a4dcb6e1b347cb775e65c3c34c1c2e2be2499886fc54c10a07ecf3986",
+      "stored_sha256": "33ffced48b341901676b75922f27fe290d319bf596ecfb5876f19da188a0c2ea"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_in_line/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_in_line/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1366,
+      "sha256": "384088ac6b4e6717337e96836a6d0b2498a532b9cbbf653a5d5074f77c826e73",
+      "stored_sha256": "5c8a085d17150bb28b273181dd5530c78b47c7bf14c0dd47f82365a7d919765a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_in_line/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_in_line/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_in_line/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_in_line/grid.json.gz",
+      "gzip": true,
+      "bytes": 413648,
+      "sha256": "3caf69984b01f951c7fab7cf5aa3304a8b4b823e701aeec091fe248983dba552",
+      "stored_sha256": "25bd8bcb6dbbf4eb348d127f4e3ed3679a72b50df9bd0d8eda0f1a88c337d4a2"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/erase_in_line/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/erase_in_line/size.json.gz",
+      "gzip": true,
+      "bytes": 33,
+      "sha256": "3ed0edaa7c2aef1ddf7d32c3a2a258a1892b7bac6f35dea12af4cd608c4b6cf7",
+      "stored_sha256": "3c1836e982bfe94fac54d94c5cdd0a25117062b0315946371ee7cadc22fc0e0f"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/fish_cc/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/fish_cc/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 2465,
+      "sha256": "c386b6e20fec74bbf79552736a45ac1b7f771236d91e21968cb05680e8fd126c",
+      "stored_sha256": "e95d30531807f3f3fdd40cbb1722cee60b1891a4a91b1b6d1ac4ca59cb7bef9d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/fish_cc/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/fish_cc/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/fish_cc/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/fish_cc/grid.json.gz",
+      "gzip": true,
+      "bytes": 274305,
+      "sha256": "95797f21287a12f60b47ef373e0e7a80454a325f685469a587f73f4328c1d58e",
+      "stored_sha256": "065d9d35aafa563940182c1b37c3619457e1fa3e3a8ab05b346035113de7a38a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/fish_cc/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/fish_cc/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/grid_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/grid_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 2046,
+      "sha256": "0eec90ab91d466145a9e20742464610f0be23e449f47a43e77d66a22010498fd",
+      "stored_sha256": "3cc5d445868ae28445249c8257f060f5b20c4081c1e5ebc16f4f879abf87ab97"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/grid_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/grid_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 21,
+      "sha256": "688ba33bd9eb6cced51ec61a7ed3d0f3f4be540879d73a83a263e1426a64807a",
+      "stored_sha256": "304b040d09e0635298b8c4b119e78668f740b1c59e5e16d87b0fcf48dc51f249"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/grid_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/grid_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 1221626,
+      "sha256": "08b0d45039518306f0a2f6e2874b70b0330927fe5ef616be21ce896d84b3d388",
+      "stored_sha256": "5517cf9d6f64eaa0e4506471c9493e3efd155bbc58dfb8d41251313aad210076"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/grid_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/grid_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/history/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/history/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1168,
+      "sha256": "630f4b640ac5071cd019e0b81375cdfb86d4db1ac2c1e96f5b1448a56b9ccd5b",
+      "stored_sha256": "a2ad48c1326bbd6c356ac3bab109cb154daae893c96a1409fd050d797507697c"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/history/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/history/config.json.gz",
+      "gzip": true,
+      "bytes": 22,
+      "sha256": "96a11f5fc0616c118c66b2a200988222f793c927d855f87431e4a47e8bb0b7f4",
+      "stored_sha256": "7908b94613899158a8b408b25640dc13882d6bb9719f3bb1540cb46f9bd36ff8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/history/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/history/grid.json.gz",
+      "gzip": true,
+      "bytes": 9744490,
+      "sha256": "795cb54bd67d19db650c03a2d7d99a43b06da8a14afc3c5a3e6318520f24ace7",
+      "stored_sha256": "8625cf3a68ac5c43e078e3e3754a810dfb07b3607af3ec72c0f1cd7f9d156f04"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/history/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/history/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/hyperlinks/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/hyperlinks/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1175,
+      "sha256": "b8d647eeb522835f432720ebfa27f2368705d605a863fa5687fc8f8ebe8da900",
+      "stored_sha256": "d3021a0cde4fc215584facc81d453f7bc5783b71fcc5a7ce10a1287be4feb74c"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/hyperlinks/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/hyperlinks/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/hyperlinks/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/hyperlinks/grid.json.gz",
+      "gzip": true,
+      "bytes": 406829,
+      "sha256": "06c611d988bc376b05af48bbe4a83244ef62202a6ae71676b75a9759e8e90214",
+      "stored_sha256": "7fde1c48833b23c3e2e40962613498277f9536e67b783aa7642b2009eef32df8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/hyperlinks/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/hyperlinks/size.json.gz",
+      "gzip": true,
+      "bytes": 33,
+      "sha256": "5802bd383d49d4200d396b4585d53ffef43396db2f1925d4e7406106af834784",
+      "stored_sha256": "08f5319dcce3bc99efbdb1e9c783453794d8932000ce07574b1dc3961c1a5c34"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/indexed_256_colors/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/indexed_256_colors/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 9369,
+      "sha256": "76447803bf5d9d3fc86b3a5c3600c6b0b4a43f4d537e94fd6277962e43832856",
+      "stored_sha256": "bb107053f7dce52bdbba1dd3decdab343d7f5614aa768c4330652d74e4e19cb2"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/indexed_256_colors/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/indexed_256_colors/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/indexed_256_colors/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/indexed_256_colors/grid.json.gz",
+      "gzip": true,
+      "bytes": 270902,
+      "sha256": "3d7c3e54ffc7a27205949ba2e76f97f83f3ff606b496d5a0254bbca04df77746",
+      "stored_sha256": "19633585693e82e16c8091f296e0249d27da6a5b73b9ecefe983fa2e422902d4"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/indexed_256_colors/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/indexed_256_colors/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/insert_blank_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/insert_blank_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 576,
+      "sha256": "9a801c9d87030b3cde506d8c7d232e49ce05713dff6132709cc7a858d1dba8e0",
+      "stored_sha256": "b608cd46c7f99259b6ce3e7f8d4300ba0d5f7fa27b1dd8e4422cc4032d406e8d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/insert_blank_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/insert_blank_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/insert_blank_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/insert_blank_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 288909,
+      "sha256": "b2841d72603deac6d4d6c7b277aa0b277371c6f91b49079a733209c9ab4e9d20",
+      "stored_sha256": "1d4d8cdcccf793b72e8cd8cb534009a1f66cc3ff0e33f7f87ff262ce02e58de1"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/insert_blank_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/insert_blank_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "7992387a4dcb6e1b347cb775e65c3c34c1c2e2be2499886fc54c10a07ecf3986",
+      "stored_sha256": "33ffced48b341901676b75922f27fe290d319bf596ecfb5876f19da188a0c2ea"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/issue_855/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/issue_855/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 16625,
+      "sha256": "bb6060d8b823ca5183e40f038f80f7f57680662c50021196095b4170118180af",
+      "stored_sha256": "f5dd3a4d427f856ee80e7c9a674492c95695a9ac2210a3a775932cebb5136d59"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/issue_855/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/issue_855/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/issue_855/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/issue_855/grid.json.gz",
+      "gzip": true,
+      "bytes": 274548,
+      "sha256": "996b2900619dccc935775c34bea5022738e5c078368e26370b1092d913dd131f",
+      "stored_sha256": "51ca7697c9b500b82d23ae66ad067c9b8c21c492efa20edbc28b19e3b8c1070a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/issue_855/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/issue_855/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/ll/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/ll/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 2187,
+      "sha256": "5e7e1a8683014e732ae47d50d2463e2058c0268ad583f69af3e4b65aae0e6a59",
+      "stored_sha256": "0ade1154448e3479d692d0bdd3d6c45162ad74f53159c2feeca512e7138b4ed1"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/ll/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/ll/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/ll/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/ll/grid.json.gz",
+      "gzip": true,
+      "bytes": 274156,
+      "sha256": "b10ece386c9cbe28f9ff1bc8f2c60b809f523c02b323cd61b6a55d781547693e",
+      "stored_sha256": "8d9653136cc8a86b39d5a82757c79d6b4c234ca66170bca4433c19b016d0800d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/ll/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/ll/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1030,
+      "sha256": "90f28499b79d9aecb5f7b4aefc3b81c6caed3055630ceb1792f07cf61417e133",
+      "stored_sha256": "80012026124d63219db997a8ca36432f069e95c33967ade6c7fdaee9e67397e5"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/grid.json.gz",
+      "gzip": true,
+      "bytes": 274754,
+      "sha256": "4e68cac330e21bbb4776a966224d638a3a08ed84d02a0f9314dade3e01e3a276",
+      "stored_sha256": "484fb015c9bef25f4725b3fd5df51f625bda5d7ee11d072e5839b10bd463072a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/newline_with_cursor_beyond_scroll_region/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/origin_goto/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/origin_goto/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 894,
+      "sha256": "8df80248d32af13962b44015cd7a52429304c4b870e03ee0c26d150c7f799367",
+      "stored_sha256": "16c4ffd63a6109d74e3111335f992b181083eaa4fbcd278c24468ce6fdc75b1a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/origin_goto/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/origin_goto/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/origin_goto/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/origin_goto/grid.json.gz",
+      "gzip": true,
+      "bytes": 379537,
+      "sha256": "e8f83b1ab6503a0f54e9ec0d6de5fdc5c12b48935785163272ffd05c8a6d0bd0",
+      "stored_sha256": "8450c66f41e3668ade6255c68db68bdf06e8f83651fab2ceb1206758db8e136e"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/origin_goto/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/origin_goto/size.json.gz",
+      "gzip": true,
+      "bytes": 33,
+      "sha256": "7ace37f56f79b7ce82412942fd022f454d4fd1aef7de64d592f0694560c28753",
+      "stored_sha256": "ac3a7d9bc43ae70f8c0fcffeaa3eae497cc7ac926f64e8e6934c9de2471cba19"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/region_scroll_down/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/region_scroll_down/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 6875,
+      "sha256": "d14387b8bb7fb6dd3b759e12518e6552630a546a459ff97ed52522083466c1aa",
+      "stored_sha256": "d3c4fb1f52ac5203a47a79e85c267f1e82607e74860cce7fecd132f6b5d557f3"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/region_scroll_down/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/region_scroll_down/config.json.gz",
+      "gzip": true,
+      "bytes": 19,
+      "sha256": "279400a855b39e3cdafaaa8546f6a50b356573d701f2b117eff4d9f14ab26138",
+      "stored_sha256": "eafeaf5af7b02ed2b712d832cd0f34bf5f0fbcb970837db1aa95409835d372d8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/region_scroll_down/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/region_scroll_down/grid.json.gz",
+      "gzip": true,
+      "bytes": 426212,
+      "sha256": "ba79dcb56d5cc00a16919f00d833d8cd2ce7dd1f88e25b1e72e7281931f70c0e",
+      "stored_sha256": "ff799d3b581ea67f09099191eaba6d3eea0731309bafa6e999720f8b9833d294"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/region_scroll_down/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/region_scroll_down/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "d6362bc12effdbe34c56590ed3f812d9174082bd2018148b0ff512e658d7c744",
+      "stored_sha256": "0339c13fa360a5b218736bac2ebebb56f0103b69c1e18f1ce61bb66f31d88b06"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/row_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/row_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 54265,
+      "sha256": "71a0a42067d83414e7cb991560a7496763d040b2e20aa24bc0813218611915e7",
+      "stored_sha256": "4c606a77c2e87f4f262f53f82793f6b72fdc0e94fc3630e4e7eaba1aa815c5f2"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/row_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/row_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 21,
+      "sha256": "9287f0ff086dd86e3587eb22834cc7ebe80736b5c4d5536d9731732db72b4b1f",
+      "stored_sha256": "811167455403ea07e5086c2765872248361273cd250b7735bb42ae7a7583bb24"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/row_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/row_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 19157581,
+      "sha256": "e681e8a40d9bdf001d58a042b744a29f95ca42ee3434f65cd3df543fd4d79585",
+      "stored_sha256": "fb5ab1ddae89594dd02cfc0a4a1919d83fe231054f1a296846db40e697fb9638"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/row_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/row_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "bc355b00a505a6b8bcc176596bc2c22c01065b782da72c073d3a6ae65e54a534",
+      "stored_sha256": "d6cfceda0c7f736dda8f56ac7efaf50b66bff260b63276e518e94dc8404f7d74"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 373,
+      "sha256": "d6787cd1f020e8f3b350993eb868a4e5711e95912eafcfa62ff61fe925a9bba8",
+      "stored_sha256": "382b4387b35e3d5bdeea55f683f520c9941b40331978e4eea802f196587a217a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor/grid.json.gz",
+      "gzip": true,
+      "bytes": 438774,
+      "sha256": "d517887b0bba0f4eaf75ba8603ca669d4cc927aff0b3c22d6d95831d61e34548",
+      "stored_sha256": "66048624e34fe70cc6b42028d516addbba9ee3b11c416a7fd0424e007889b245"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "dcc4e4a5f48f8c17bfe5d78b7523fa95b28b57037ce1c5ecee342093fb54a884",
+      "stored_sha256": "68eb794ea05d878d3a8e360d893828fe4b40354fabfcad6ced756f4279817e0a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor_alt/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor_alt/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 238,
+      "sha256": "3b77a1a5843d85156fc2f1e2288b3f3c3ca0efbb96c9a05ba09351f8bd3b842b",
+      "stored_sha256": "939b94d6a877c2ba078757896cb0fe912b56a917bac2127d5a0bb157b5d43989"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor_alt/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor_alt/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor_alt/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor_alt/grid.json.gz",
+      "gzip": true,
+      "bytes": 438833,
+      "sha256": "56cd2e98472debbc565ac6e03b555b7fd43815c0775830b4ff8fb4681b6a6758",
+      "stored_sha256": "ecc62e113907559681349e448fae959237c20c03ecb997a64e03de07f658a0de"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/saved_cursor_alt/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/saved_cursor_alt/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "dcc4e4a5f48f8c17bfe5d78b7523fa95b28b57037ce1c5ecee342093fb54a884",
+      "stored_sha256": "68eb794ea05d878d3a8e360d893828fe4b40354fabfcad6ced756f4279817e0a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 5753,
+      "sha256": "bb1c00affdea62add49da2b21c38e48c1c131251b0b71f9fab05fb7596dbb277",
+      "stored_sha256": "f74be9e89c8640f139a1b26fc5593833e145584b1e4143b8370ce2050331f819"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/config.json.gz",
+      "gzip": true,
+      "bytes": 19,
+      "sha256": "279400a855b39e3cdafaaa8546f6a50b356573d701f2b117eff4d9f14ab26138",
+      "stored_sha256": "eafeaf5af7b02ed2b712d832cd0f34bf5f0fbcb970837db1aa95409835d372d8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/grid.json.gz",
+      "gzip": true,
+      "bytes": 289027,
+      "sha256": "10dac87cc0a70858c4d9912e36cb7ddebc49dcee6e4b7be472ed431ec0f6a31d",
+      "stored_sha256": "09aae9d4460c1127fbbec488cde4dd01dbb927ebd61a09909771260e27d5eebe"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_in_region_up_preserves_history/size.json.gz",
+      "gzip": true,
+      "bytes": 32,
+      "sha256": "7924bd6d496b2c52a68126677c4c610e4aa005461cc3a589382e4928f27947c3",
+      "stored_sha256": "5314d3f9f01eedf21b5e593dba647399b089813b21b6eba27a4135c2dcdfe8e8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_up_reset/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_up_reset/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 6665,
+      "sha256": "67c74c215042f05388191c21f84870ce42485ec1dcf1ae31d13049c7a8698de0",
+      "stored_sha256": "a52c022e8c6378bc2b15fccdbd1a9a79340cb2d23a9aa6f3309447915960f83d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_up_reset/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_up_reset/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_up_reset/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_up_reset/grid.json.gz",
+      "gzip": true,
+      "bytes": 269702,
+      "sha256": "de5f987db02da572df118264fc8eb7670cd9d068babb8afdceb9768416c479d1",
+      "stored_sha256": "b6c3c6f0f173e1c57f78dea5e9339d30a57010e0c0bb82c60d61d7378fcade8d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/scroll_up_reset/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/scroll_up_reset/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "fba17c021ffeabb8e364f68e0cb20945327cd9b69a6667f91c8e83abaf5b036b",
+      "stored_sha256": "617d51e27ce77ceb432c045e70a0562bf36915ca2b73e92ab1137a0e8241b47a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/selective_erasure/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/selective_erasure/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 43,
+      "sha256": "4c46a2fd8303c33496a093560c4643d060af2500ee7c4360fb837f132570b67d",
+      "stored_sha256": "818df43c372224b96d0370e44de6ff5fa955283206db4410a3a2f98784686dd8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/selective_erasure/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/selective_erasure/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/selective_erasure/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/selective_erasure/grid.json.gz",
+      "gzip": true,
+      "bytes": 2877,
+      "sha256": "ea389574ee2b6c90719369c5a2988c814be3f7c363f9511a4b822beee9a7e6a9",
+      "stored_sha256": "981227e78d632703672a9ee0ae5be3a0bb28cf4770c25eaf2a994ebd8dad0c72"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/selective_erasure/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/selective_erasure/size.json.gz",
+      "gzip": true,
+      "bytes": 32,
+      "sha256": "87235d0fcb16eb3319fc6f03bdb8381922e030d6e90d66e6a9dc1dbd32f302db",
+      "stored_sha256": "c5f69e5c8890a1bdcc5631fdffee58d5eeae9b2b3c666546dbe41c294938f27c"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/sgr/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/sgr/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1190,
+      "sha256": "ebbd3059e0bc9f305db91b900a5b76c102210b8b57324f69160586a597f61490",
+      "stored_sha256": "d8e083af03e4658418802ef4305ae29ea97282383467ff4436ca4eb57f9068ec"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/sgr/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/sgr/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/sgr/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/sgr/grid.json.gz",
+      "gzip": true,
+      "bytes": 439900,
+      "sha256": "de9b3f051448f0d82104b997220d8f115142cb7778998ddd955535e43a11ac1e",
+      "stored_sha256": "5602e4b14d1216a3441bc0bc5a55886769a43231b8d887188f89f81f2adbe6af"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/sgr/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/sgr/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "dcc4e4a5f48f8c17bfe5d78b7523fa95b28b57037ce1c5ecee342093fb54a884",
+      "stored_sha256": "68eb794ea05d878d3a8e360d893828fe4b40354fabfcad6ced756f4279817e0a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tab_rendering/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/tab_rendering/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 750,
+      "sha256": "faf631d249a693465f761fb3d66224ca54ead01bf5a65189b4e46c6e224bda0a",
+      "stored_sha256": "b3052d15d5921b1daec7d8ac410c7406840ff769387aa9791881e96335d51499"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tab_rendering/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tab_rendering/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tab_rendering/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tab_rendering/grid.json.gz",
+      "gzip": true,
+      "bytes": 658859,
+      "sha256": "0815fc953b8ddba22f2894efde1db107825b7972ff1e70be104266a75f610705",
+      "stored_sha256": "79186d1d99aa8d38ecbef6263947d9dd366818510bd375131639f8b8322a467a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tab_rendering/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tab_rendering/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "f5c11e3c1022b53a13635db49216b41274b68d318460f8b4a14b2817a8650074",
+      "stored_sha256": "a6de84d6281829bbc4b59a071baa5bc2202f42c476f19ab826216a1c6acb6aeb"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_git_log/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_git_log/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 12913,
+      "sha256": "088731489a0130027d9af8f1c32ab97fb0f712ba3b4817e188deaf7ae33cbce4",
+      "stored_sha256": "70e596ab95d0c17f9caed4272c8199c19b744801efa6ee8f7cf9f6049db46e1d"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_git_log/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_git_log/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_git_log/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_git_log/grid.json.gz",
+      "gzip": true,
+      "bytes": 272503,
+      "sha256": "eb769193e868591af700f00b2a66c2788427d5870757d998287b1df6d1621809",
+      "stored_sha256": "362e5984d2feb2cd42d781a3a6e4747366a14237bdca1ff5260f029dc5d600e8"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_git_log/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_git_log/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_htop/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_htop/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 51126,
+      "sha256": "ebf85521e68cd8133ac20282a89e86f02277f87a84cfb00fccc054834347d4ab",
+      "stored_sha256": "5d97879b7bf3588b2befb8f3571f994eb59ea57c49a39a66f0dd663362a2d574"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_htop/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_htop/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_htop/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_htop/grid.json.gz",
+      "gzip": true,
+      "bytes": 270048,
+      "sha256": "a6815dd0b7456da96de734438561c6af1f93d3c11d51caf5114fd42927cfef08",
+      "stored_sha256": "780783ee125a4c0ac50902d1425b6631c57056f747f508e31d1934dbff095c2f"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/tmux_htop/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/tmux_htop/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/underline/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/underline/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 1135,
+      "sha256": "53f0bedebf72eefff01efb9bb8d7b2962c4e26cd5ac15270b20a89190aba8db9",
+      "stored_sha256": "8935cfa0d82eb67b9ef708198afdc29d2ed99240808222040ac95ad6a47e7868"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/underline/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/underline/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/underline/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/underline/grid.json.gz",
+      "gzip": true,
+      "bytes": 773961,
+      "sha256": "6d35bcbc8be9d69641ae1afd51f4f1b1bb5105eee6465db19ee93c2f2d309b92",
+      "stored_sha256": "d08b0eb143004370233dfbb7b711f3097de50129139c049c5711e74252a08083"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/underline/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/underline/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "6b2bcd3330585b3665b290a8fa381f82ff054ec5526846e3e6624e30985ade6d",
+      "stored_sha256": "658d7d8c2c9fb937ce6e8476909837ae4d23c05975d4014de9833c0b6ebb0370"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_24bitcolors_bce/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_24bitcolors_bce/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 350752,
+      "sha256": "1bea3eb169cb672625a627aed12f6ce58db1d4a35aa2e7fd2bf706218d6b607a",
+      "stored_sha256": "5f9cc581954afd4c35a5c12499134132631bb0544f79e1b7f1f8dee9893088f5"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_24bitcolors_bce/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_24bitcolors_bce/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_24bitcolors_bce/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_24bitcolors_bce/grid.json.gz",
+      "gzip": true,
+      "bytes": 1672534,
+      "sha256": "8cde6fcc6cdcf33dd215086a84ab682009a9810ff6853f3a9d2a8b0c200198db",
+      "stored_sha256": "6bd1e3cc8d1083ebddb488b2e08fbeaa574812b26ce063a2537ebaefb0388666"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_24bitcolors_bce/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_24bitcolors_bce/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "15d6d82a4972e1284267b161cbfb1cae46a7f8fb66f1161cf6e00c8359f5999b",
+      "stored_sha256": "f79239245674cd6bb4524cc1633cdb69b10b270c6a43094039e0b772dd27ca6f"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_large_window_scroll/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_large_window_scroll/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 303187,
+      "sha256": "6f1b0d240cab8f32ed9aeb635132b614a6bc433810c27d3f0382779d5ba3ffe2",
+      "stored_sha256": "0429dd30f826c77d600303a4030d85628f21620e8f25cdb0b26eb367215b7566"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_large_window_scroll/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_large_window_scroll/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_large_window_scroll/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_large_window_scroll/grid.json.gz",
+      "gzip": true,
+      "bytes": 792190,
+      "sha256": "92bafdb069b5c37f917d4d701f51cf26a7e58a33ef888159d01c21a8eaa12dfd",
+      "stored_sha256": "00c6a9fa64ed16f5ea6c598e0defbcd172dcb88b9bb0f8131046fd31fedbed31"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_large_window_scroll/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_large_window_scroll/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "bc355b00a505a6b8bcc176596bc2c22c01065b782da72c073d3a6ae65e54a534",
+      "stored_sha256": "d6cfceda0c7f736dda8f56ac7efaf50b66bff260b63276e518e94dc8404f7d74"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_simple_edit/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_simple_edit/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 5061,
+      "sha256": "041f7871a9227e7765f826dc0aaff953e5b6ec4a90304a6704b7f5af246fe6f1",
+      "stored_sha256": "175563a234737c8d4261cdaf4dbed24df3990f90d17488089789e9b3cad7baad"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_simple_edit/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_simple_edit/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_simple_edit/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_simple_edit/grid.json.gz",
+      "gzip": true,
+      "bytes": 201768,
+      "sha256": "600cf3560b3538f99f455b82882464af895be6367807768d587cb1c287253e2f",
+      "stored_sha256": "f4b7b22288d60524936b98ff0d04ee521e872805008aae69cf5cc90ebfde7f7e"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vim_simple_edit/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vim_simple_edit/size.json.gz",
+      "gzip": true,
+      "bytes": 33,
+      "sha256": "8aaa5d39381af1ae9333599201039da67992efaae9751a83e08b2f47c43285be",
+      "stored_sha256": "65253587ac0bcee6b16ca6fe8899caf37b60d1ef77c967cc6a6bbcb1ad79bbb1"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_cursor_movement_1/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_cursor_movement_1/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 6318,
+      "sha256": "1c4332bb01170937d769a986a610c82dd3f460e50e69b672e9405492616af331",
+      "stored_sha256": "b60281fb1ffbf403e8b26e256d8cd2313fc92cb9040644e16d36349b15c3c505"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_cursor_movement_1/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_cursor_movement_1/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_cursor_movement_1/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_cursor_movement_1/grid.json.gz",
+      "gzip": true,
+      "bytes": 274809,
+      "sha256": "d9d9114b069c0d917f8c2e1f4d5be33c443e638f88b0f7d8c381f6644329a43c",
+      "stored_sha256": "20f9ca4c45e8d9bbe50c5091d084691494d08417962b6b9c0bb0b08e76f0c32e"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_cursor_movement_1/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_cursor_movement_1/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_insert/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_insert/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 3854,
+      "sha256": "567b53ff0b94715248d0ec7621b96c0fb4ac0079224ada0d0d5bab38aa730ea1",
+      "stored_sha256": "d33eab0a2e258551062d36b248d1333688184d24193e37ec806366bff98e1ba3"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_insert/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_insert/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_insert/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_insert/grid.json.gz",
+      "gzip": true,
+      "bytes": 274809,
+      "sha256": "11788d21283ad16d0f546a0eee9dfaa90aca1e054d5b64981ae55795c8720df7",
+      "stored_sha256": "d998cbdf237714f9260342d674d6d89d1efe03728676adb9237d47ed660e7e6b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_insert/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_insert/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_1/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_1/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 34278,
+      "sha256": "f334aa6b6cc9e17efa38fd093313bc00bb4b44d19e97e4069b47717f5f675df6",
+      "stored_sha256": "a3f2dfb99b46bb5dd532901a416253d55c2da3e9e0be66aed976b9964c6efd89"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_1/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_1/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_1/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_1/grid.json.gz",
+      "gzip": true,
+      "bytes": 274753,
+      "sha256": "124e0df958b0b5a9009cc8dca9dcc5e33ad0e975c393b2250493cbe3605fac01",
+      "stored_sha256": "dc58c26c7942b3f6e079ce74a70f5387e4a5b68216bc0468634c8b690c3c0c42"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_1/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_1/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_2/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_2/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 18521,
+      "sha256": "e057c2c3f618aec835304dfe75b54e07c5c879cd18ba3cdb7b1ed07c7ddb1b0a",
+      "stored_sha256": "5c0244fa8144e58c04971c768d4bbcbe35a8c13f34e33c78a9c2231d9db92a01"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_2/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_2/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_2/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_2/grid.json.gz",
+      "gzip": true,
+      "bytes": 274753,
+      "sha256": "425e2f2cc15efbfc1d6f67de306651f6f071b1506389db16d6ae04e35a6990ee",
+      "stored_sha256": "01cd40d803927c923280b21cda011ad0c58b4027b1c4356ce27cb18d210e0e48"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_origin_mode_2/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_origin_mode_2/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_scroll/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_scroll/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 18215,
+      "sha256": "3eece38ddd0334d76b09dd98c051aad28b077a028bf5fec260e090ceeb8ce73e",
+      "stored_sha256": "d320b757cea565e7fe584df51a0fa3f83c031e02f3a20df704cd9c27d9cc70b9"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_scroll/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_scroll/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_scroll/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_scroll/grid.json.gz",
+      "gzip": true,
+      "bytes": 274775,
+      "sha256": "3a233880835406711569753e88e3102fcafb9144ff37b9d8fe31a311f32b3a43",
+      "stored_sha256": "e4cde5a2cad0d105e731e2bcb884cbd19347826ee6246034e51b4b95dadd3c20"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_scroll/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_scroll/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_tab_clear_set/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_tab_clear_set/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 2100,
+      "sha256": "3142179d47599340e3c6c82c0faa972d24465059000cf29dc48fa2ca29cff24a",
+      "stored_sha256": "3b0a634bd00220dea34fb488235a0509b2333d4c00f8fe94c26d495e2bb65a62"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_tab_clear_set/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_tab_clear_set/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_tab_clear_set/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_tab_clear_set/grid.json.gz",
+      "gzip": true,
+      "bytes": 324456,
+      "sha256": "d9ef6212ee21f91b795701bc0d0332a31fa97bcd18a54632e3e3b6880570ff15",
+      "stored_sha256": "990924590013d4d8e2e350497e609fb743e87a3ca197e7d055bed50e416f0d6b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/vttest_tab_clear_set/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/vttest_tab_clear_set/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "d6362bc12effdbe34c56590ed3f812d9174082bd2018148b0ff512e658d7c744",
+      "stored_sha256": "0339c13fa360a5b218736bac2ebebb56f0103b69c1e18f1ce61bb66f31d88b06"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/wrapline_alt_toggle/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/wrapline_alt_toggle/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 2037,
+      "sha256": "c3530391168f7415224ac4ed1738751e18634cfe79f6daddcfc8d70d5150f2f6",
+      "stored_sha256": "216c8dd5b7bf7b3cb0d4e8852499e4b4e1d92705253dffe9144328c5e160a1fb"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/wrapline_alt_toggle/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/wrapline_alt_toggle/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/wrapline_alt_toggle/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/wrapline_alt_toggle/grid.json.gz",
+      "gzip": true,
+      "bytes": 436927,
+      "sha256": "3592e1c7c2c89606df1bf3ba7ae561134045ae9c0a560053ac1b47e00b90c9a6",
+      "stored_sha256": "ee3404c80f8d9710c12cf34d2c8acaf6213d0baba29800b0796425a4e567fdff"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/wrapline_alt_toggle/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/wrapline_alt_toggle/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "dcc4e4a5f48f8c17bfe5d78b7523fa95b28b57037ce1c5ecee342093fb54a884",
+      "stored_sha256": "68eb794ea05d878d3a8e360d893828fe4b40354fabfcad6ced756f4279817e0a"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zerowidth/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/zerowidth/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 965,
+      "sha256": "2ed855636564d242b9d956371becabc9a125b4ccf25385d57c9ba2e791331916",
+      "stored_sha256": "222adbecddcf54ddb903c99a3fbd55e73e5447ee0badf9ec7833d95a20e069e1"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zerowidth/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/zerowidth/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zerowidth/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/zerowidth/grid.json.gz",
+      "gzip": true,
+      "bytes": 438595,
+      "sha256": "08f32b63001d027f8d6009aff88ac13bdce263bff75964df8f67dc4e979e2ecb",
+      "stored_sha256": "7ea2997a0ebae429a95c550857a2d876687d7e94a55d6666ac24b54d203f7f3f"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zerowidth/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/zerowidth/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "c23fda41221a04cd82c3b48cbab035829a2615f4536c9e7044a1e267ca0fe27e",
+      "stored_sha256": "44002dbe928d845807cfd5f3bc0efe098f2719c1344543b2e66558841a9a41f7"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zsh_tab_completion/alacritty.recording",
+      "path": "alacritty/alacritty_terminal/tests/ref/zsh_tab_completion/alacritty.recording.gz",
+      "gzip": true,
+      "bytes": 433,
+      "sha256": "f559b6e162fbd0ced9dacfc9986a3bd7101382319af6d57005534911f4c669d7",
+      "stored_sha256": "79becd78434b19dec995a98c4c5b671ec76fc4752d0d5862b8e10aead0c40b74"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zsh_tab_completion/config.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/zsh_tab_completion/config.json.gz",
+      "gzip": true,
+      "bytes": 18,
+      "sha256": "9e0c0e2a1b0ca54e727aed33d7246577441da734cf0f60ec0faf0be2dd081d6a",
+      "stored_sha256": "cb6aa9eb2b8f3411949b57aae7a65330e70d0781703bea992da22f4ab8e83c77"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zsh_tab_completion/grid.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/zsh_tab_completion/grid.json.gz",
+      "gzip": true,
+      "bytes": 274729,
+      "sha256": "b186211108f3d5da50a09c21c8ad4a5c3ff65904a47801281b0fc710192d69ef",
+      "stored_sha256": "dc971be2bb6df8f287963416f950a29f801008b54f46cc3c5a132a3993081d19"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "alacritty_terminal/tests/ref/zsh_tab_completion/size.json",
+      "path": "alacritty/alacritty_terminal/tests/ref/zsh_tab_completion/size.json.gz",
+      "gzip": true,
+      "bytes": 34,
+      "sha256": "ec72a9441cc802f45fa55890a0d5846e445f1a2bb489ba826a62f2a38462fb23",
+      "stored_sha256": "486ee0a3c7612cc1494f7fce09adb69620e44bf96b19cf0d765d3f9cf4162f0b"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "LICENSE-APACHE",
+      "path": "alacritty/LICENSE-APACHE",
+      "gzip": false,
+      "bytes": 10843,
+      "sha256": "8884289e3969c089cd556c53fa1d3f51d86b29e52a8c1d660a55ce8292986910",
+      "stored_sha256": "8884289e3969c089cd556c53fa1d3f51d86b29e52a8c1d660a55ce8292986910"
+    },
+    {
+      "project": "alacritty",
+      "source_path": "LICENSE-MIT",
+      "path": "alacritty/LICENSE-MIT",
+      "gzip": false,
+      "bytes": 1023,
+      "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+      "stored_sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_01-movement-1.test",
+      "path": "libvterm/t/90vttest_01-movement-1.test",
+      "gzip": false,
+      "bytes": 2764,
+      "sha256": "10e94d5d43d0332cd437ec1a525c49ba3d104fc8fbfe61f2fae94b549d15f3f5",
+      "stored_sha256": "10e94d5d43d0332cd437ec1a525c49ba3d104fc8fbfe61f2fae94b549d15f3f5"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_01-movement-2.test",
+      "path": "libvterm/t/90vttest_01-movement-2.test",
+      "gzip": false,
+      "bytes": 2728,
+      "sha256": "3f31d3fcc24f8d3f2820eccb5c6c15bc50ba18e308f0de30f7d76a73fe79c3e5",
+      "stored_sha256": "3f31d3fcc24f8d3f2820eccb5c6c15bc50ba18e308f0de30f7d76a73fe79c3e5"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_01-movement-3.test",
+      "path": "libvterm/t/90vttest_01-movement-3.test",
+      "gzip": false,
+      "bytes": 559,
+      "sha256": "c24eb0915a2e4b7d31273bd305af3db289a2871a98101bbe933799181ceaad6a",
+      "stored_sha256": "c24eb0915a2e4b7d31273bd305af3db289a2871a98101bbe933799181ceaad6a"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_01-movement-4.test",
+      "path": "libvterm/t/90vttest_01-movement-4.test",
+      "gzip": false,
+      "bytes": 1022,
+      "sha256": "02f71881c70906755acf44ed771b9599744f006ad626cd9aba5eb699753fffad",
+      "stored_sha256": "02f71881c70906755acf44ed771b9599744f006ad626cd9aba5eb699753fffad"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_02-screen-1.test",
+      "path": "libvterm/t/90vttest_02-screen-1.test",
+      "gzip": false,
+      "bytes": 339,
+      "sha256": "56393380e0cf4a7f0ff2efc44806c2630c33df8f40d20d0d17cd8fbc5bf64d3e",
+      "stored_sha256": "56393380e0cf4a7f0ff2efc44806c2630c33df8f40d20d0d17cd8fbc5bf64d3e"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_02-screen-2.test",
+      "path": "libvterm/t/90vttest_02-screen-2.test",
+      "gzip": false,
+      "bytes": 490,
+      "sha256": "18bde01b6221448af53755fe0f3b4bc64dfa2197caa53ded3221210ca6946064",
+      "stored_sha256": "18bde01b6221448af53755fe0f3b4bc64dfa2197caa53ded3221210ca6946064"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_02-screen-3.test",
+      "path": "libvterm/t/90vttest_02-screen-3.test",
+      "gzip": false,
+      "bytes": 181,
+      "sha256": "67443dc9aea34dc0cff836305116e7e6d4247e20d7324d87b5facd18e3fc6300",
+      "stored_sha256": "67443dc9aea34dc0cff836305116e7e6d4247e20d7324d87b5facd18e3fc6300"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "t/90vttest_02-screen-4.test",
+      "path": "libvterm/t/90vttest_02-screen-4.test",
+      "gzip": false,
+      "bytes": 188,
+      "sha256": "f013a8d138783bcb08873e3ea248d4ff500cc6aec35096e99af946a0437ef16e",
+      "stored_sha256": "f013a8d138783bcb08873e3ea248d4ff500cc6aec35096e99af946a0437ef16e"
+    },
+    {
+      "project": "libvterm",
+      "source_path": "LICENSE",
+      "path": "libvterm/LICENSE",
+      "gzip": false,
+      "bytes": 1098,
+      "sha256": "66c627cf44f0c59daf81ba442e62e9b3d3cd1091a41e116de5ea9058a57bbba7",
+      "stored_sha256": "66c627cf44f0c59daf81ba442e62e9b3d3cd1091a41e116de5ea9058a57bbba7"
+    }
+  ]
+}

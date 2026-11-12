@@ -1,0 +1,2 @@
+# Preserve byte-for-byte upstream fixtures and license hashes on every checkout.
+tests/upstream/** -text -whitespace

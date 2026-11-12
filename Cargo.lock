@@ -2917,6 +2917,7 @@ dependencies = [
  "clap",
  "crossbeam-channel",
  "eframe",
+ "flate2",
  "humantime",
  "image",
  "libc",

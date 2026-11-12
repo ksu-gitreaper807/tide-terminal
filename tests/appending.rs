@@ -409,9 +409,39 @@ fn separate_stream_retention_limits_and_truncation_are_independent() {
     assert_eq!(streams.stdout, "KEEP\n");
     assert!(!streams.stdout_truncated);
     assert!(streams.stderr.len() <= CAPTURE_LIMIT);
-    assert!(streams.stderr.ends_with("ERR_TAIL\n"));
+    assert!(
+        streams.stderr.ends_with("ERR_TAIL\n"),
+        "stderr bytes={}, tail={:?}",
+        streams.stderr.len(),
+        &streams.stderr[streams.stderr.len().saturating_sub(80)..]
+    );
     assert!(streams.stderr_truncated);
 }
+#[test]
+fn output_pressure_preserves_both_stream_tails_before_publishing_exit() {
+    let dir = tempfile::tempdir().unwrap();
+    let command = "python3 -c 'import sys;out=sys.stdout.buffer;err=sys.stderr.buffer;[(out.write(b\"OUT_LINE\\n\"*1024),err.write(b\"ERR_LINE\\n\"*1024)) for _ in range(128)];out.write(b\"OUT_TAIL\\n\");err.write(b\"ERR_TAIL\\n\");out.flush();err.flush()'";
+    let session = Session::spawn(options(command, dir.path())).unwrap();
+    let (_, code) = finish(&session);
+    assert_eq!(code, 0);
+    let record = recording(&session);
+    let record = record.lock().unwrap();
+    assert_eq!(record.exit_code, Some(0));
+    let streams = record.streams.as_ref().unwrap();
+    for (text, truncated, tail) in [
+        (&streams.stdout, streams.stdout_truncated, "OUT_TAIL\n"),
+        (&streams.stderr, streams.stderr_truncated, "ERR_TAIL\n"),
+    ] {
+        assert!(text.len() <= CAPTURE_LIMIT);
+        assert!(truncated);
+        assert!(
+            text.ends_with(tail),
+            "missing {tail:?}, retained {} bytes",
+            text.len()
+        );
+    }
+}
+
 #[test]
 fn hidden_password_keystrokes_are_absent_from_each_separate_stream() {
     let dir = tempfile::tempdir().unwrap();

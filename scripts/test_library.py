@@ -47,6 +47,7 @@ def main():
     observer = json.loads((app / 'tests/cases/observer.json').read_text())
     known = json.loads((app / 'tests/cases/known-gaps.json').read_text())
     known.update(json.loads((app / 'tests/cases/stream-known-gaps.json').read_text()))
+    upstream = json.loads((app / 'tests/upstream/manifest.json').read_text())
     report = {
         'started_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'binary': str(binary), 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
@@ -55,7 +56,11 @@ def main():
         'property_cases_per_property': args.property_cases, 'property_seed': args.seed,
         'corpus': {'terminal_cases': len(terminal), 'terminal_replay_strides': [1, 3, 11, 'whole'],
                    'observer_cases': len(observer),
-                   'observer_split_boundary_replays': sum(len(c['stream'].encode()) + 1 for c in observer)},
+                   'observer_split_boundary_replays': sum(len(c['stream'].encode()) + 1 for c in observer),
+                   'upstream_cases': upstream['cases'],
+                   'upstream_replay_strides': [1, 7, 4096, 'whole'],
+                   'upstream_scenario_replays': 4 * sum(upstream['cases'].values())},
+        'upstream_sources': upstream['sources'],
         'known_gaps': known, 'steps': {},
         'not_run': ['external vttest visual review', 'external esctest2', 'coverage-guided fuzzing',
                     'LLVM line/branch coverage', 'mutation testing'],

@@ -40,5 +40,6 @@ lto = "thin"
 strip = true
 
 [dev-dependencies]
+flate2 = "1"
 proptest = "1.12.0"
 

@@ -640,6 +640,9 @@ impl Worker {
     }
     fn request_stop(&mut self, reason: String, closing: bool) {
         if self.exit.is_some() {
+            // A descendant may still produce output after the direct child exits.
+            // Explicit close must remain able to end draining and drop the PTYs.
+            self.closing |= closing;
             return;
         }
         if self.stopping.is_some() {
@@ -987,7 +990,12 @@ impl Worker {
                 }
             }
             if let Some((code, when)) = self.exit
-                && (self.eof || when.elapsed() > Duration::from_millis(300))
+                && output_drained(
+                    self.eof,
+                    when.elapsed(),
+                    self.read_rx.is_empty(),
+                    self.closing,
+                )
             {
                 self.recorder.finish(code as i32);
                 if self.options.managed() {
@@ -1012,6 +1020,12 @@ impl Worker {
             }
         }
     }
+}
+
+// Quiet descendants may retain a PTY indefinitely. Keep the existing grace for that
+// case, but never discard queued output merely because parsing took longer than it.
+fn output_drained(eof: bool, exit_age: Duration, queue_empty: bool, closing: bool) -> bool {
+    eof || (exit_age > Duration::from_millis(300) && (queue_empty || closing))
 }
 
 /// A child that is not reading stdin must not block deadline enforcement.
@@ -1048,5 +1062,37 @@ impl Write for AsyncWriter {
     }
     fn flush(&mut self) -> std::io::Result<()> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod drain_tests {
+    use super::output_drained;
+    use std::time::Duration;
+
+    #[test]
+    fn queued_output_survives_exit_grace_until_drained_or_explicitly_closed() {
+        let grace = Duration::from_millis(300);
+        assert!(!output_drained(false, grace, true, false));
+        assert!(!output_drained(
+            false,
+            grace + Duration::from_nanos(1),
+            false,
+            false
+        ));
+        assert!(!output_drained(
+            false,
+            Duration::from_secs(10),
+            false,
+            false
+        ));
+        assert!(output_drained(
+            false,
+            grace + Duration::from_nanos(1),
+            true,
+            false
+        ));
+        assert!(output_drained(false, Duration::from_secs(1), false, true));
+        assert!(output_drained(true, Duration::ZERO, false, false));
     }
 }

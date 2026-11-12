@@ -764,6 +764,27 @@ fn close_can_finish_a_non_forcing_stop_and_cooperative_events_work() {
 }
 
 #[test]
+fn close_after_parent_exit_can_end_an_active_descendant_output_drain() {
+    // Bound the producer independently of Session cleanup, including on assertion failure.
+    let script = "import os,signal,time\nsignal.signal(signal.SIGHUP,signal.SIG_IGN)\nif os.fork(): os._exit(0)\nend=time.monotonic()+4\ntry:\n while time.monotonic()<end: os.write(1,b'BUSY_OUTPUT '*1024+b'\\n')\nexcept OSError: pass\n";
+    let session = Session::spawn(command(script, RuleSpec::default())).unwrap();
+    wait(
+        &session,
+        Duration::from_secs(3),
+        |event| matches!(event, Event::Output { text } if text.contains("BUSY_OUTPUT")),
+    );
+    // Exercise close after the direct child has exited and the quiet-PTY grace has elapsed.
+    std::thread::sleep(Duration::from_millis(400));
+    assert!(
+        session.is_running(),
+        "producer did not sustain the output drain"
+    );
+    let start = Instant::now();
+    drop(session);
+    assert!(start.elapsed() < Duration::from_secs(1));
+}
+
+#[test]
 fn resize_reaches_actual_tty_and_private_runs_leave_no_database() {
     let dir = tempfile::tempdir().unwrap();
     let mut o = command(
