@@ -151,6 +151,16 @@ fn duration_field(
         track(rects, &format!("{id}_unit"), response.response);
     });
 }
+#[derive(Clone, Copy)]
+enum CloseTarget {
+    Tab(u64),
+    Window,
+}
+struct CloseRequest {
+    target: CloseTarget,
+    jobs: Vec<String>,
+}
+
 struct App {
     config: Config,
     options: UiOptions,
@@ -159,6 +169,8 @@ struct App {
     scroll_active_tab: bool,
     tab_view_width: f32,
     error: Option<String>,
+    close_request: Option<CloseRequest>,
+    close_approved: bool,
     settings: bool,
     run_open: bool,
     append_open: bool,
@@ -229,6 +241,8 @@ impl App {
             scroll_active_tab: false,
             tab_view_width: 0.,
             error: font_error,
+            close_request: None,
+            close_approved: false,
             settings: false,
             run_open: false,
             append_open: false,
@@ -534,8 +548,97 @@ impl App {
             }
         }
     }
+    fn request_close(&mut self, target: CloseTarget, ctx: &egui::Context) {
+        let jobs = self
+            .panes
+            .iter()
+            .filter(|pane| match target {
+                CloseTarget::Tab(id) => pane.session.id == id,
+                CloseTarget::Window => true,
+            })
+            .flat_map(|pane| pane.session.active_processes())
+            .collect::<Vec<_>>();
+        if jobs.is_empty() {
+            self.finish_close(target, ctx);
+        } else {
+            self.run_open = false;
+            self.append_open = false;
+            self.settings = false;
+            self.history_open = false;
+            self.error = None;
+            self.close_request = Some(CloseRequest { target, jobs });
+        }
+    }
+    fn finish_close(&mut self, target: CloseTarget, ctx: &egui::Context) {
+        self.close_request = None;
+        match target {
+            CloseTarget::Tab(id) => {
+                if let Some(index) = self.panes.iter().position(|pane| pane.session.id == id) {
+                    self.panes.remove(index);
+                    if index < self.active {
+                        self.active -= 1;
+                    }
+                    self.active = self.active.min(self.panes.len().saturating_sub(1));
+                    self.scroll_active_tab = true;
+                }
+            }
+            CloseTarget::Window => {
+                self.close_approved = true;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+        }
+    }
+    fn close_dialog(&mut self, ctx: &egui::Context) {
+        let Some(request) = &self.close_request else {
+            return;
+        };
+        let target = request.target;
+        let mut cancel = false;
+        let mut confirm = false;
+        theme::dialog(ctx, "close_confirmation").show(ctx, |ui| {
+            ui.set_width((ctx.screen_rect().width() - 96.).clamp(300., 480.));
+            cancel = theme::heading(
+                ui,
+                match target {
+                    CloseTarget::Tab(_) => "Close this terminal?",
+                    CloseTarget::Window => "Close Tide?",
+                },
+            );
+            ui.label(
+                "Programs are still running. Closing will stop them and may discard unsaved work.",
+            );
+            ui.add_space(12.);
+            egui::ScrollArea::vertical()
+                .max_height(130.)
+                .show(ui, |ui| {
+                    for job in &request.jobs {
+                        ui.label(theme::hint(job));
+                    }
+                });
+            ui.add_space(20.);
+            ui.horizontal(|ui| {
+                cancel |=
+                    track(&mut self.qa_rects, "close_cancel", ui.button("Keep open")).clicked();
+                confirm = track(
+                    &mut self.qa_rects,
+                    "close_confirm",
+                    ui.add(theme::primary("Stop and close")),
+                )
+                .clicked();
+            });
+        });
+        // Require an explicit decision. The click that opens a reused modal must
+        // not immediately dismiss it through the backdrop. Escape remains cancel.
+        cancel |= ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape));
+        if confirm {
+            self.finish_close(target, ctx);
+        } else if cancel {
+            self.close_request = None;
+        }
+    }
     fn modal_open(&self) -> bool {
-        self.settings
+        self.close_request.is_some()
+            || self.settings
             || self.run_open
             || self.history_open
             || self.append_open
@@ -555,6 +658,12 @@ impl App {
             })
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+        }
+        if self.close_request.is_some() {
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+                self.close_request = None;
+            }
+            return;
         }
         let (new, run, history, settings, close, next, zoom_in, append) = ctx.input_mut(|i| {
             let m = egui::Modifiers {
@@ -601,9 +710,7 @@ impl App {
             self.history_open = false;
         }
         if close && !self.panes.is_empty() {
-            self.panes.remove(self.active);
-            self.active = self.active.min(self.panes.len().saturating_sub(1));
-            self.scroll_active_tab = true;
+            self.request_close(CloseTarget::Tab(self.panes[self.active].session.id), ctx);
         }
         if next && !self.panes.is_empty() {
             self.active = (self.active + 1) % self.panes.len();
@@ -636,6 +743,7 @@ impl App {
             .frame(egui::Frame::NONE.fill(Color32::from_rgba_unmultiplied(BG.r(), BG.g(), BG.b(), (self.config.opacity * 255.) as u8))
                 .inner_margin(egui::Margin::symmetric(10, 8)))
             .show(ctx, |ui| {
+                if self.close_request.is_some() { ui.disable(); }
                 ui.spacing_mut().item_spacing.x = 8.;
                 ui.horizontal(|ui| {
                     let tab_width = (ui.available_width() - 292.).max(100.);
@@ -813,9 +921,7 @@ impl App {
                 });
             });
         if let Some(index) = close {
-            self.panes.remove(index);
-            self.active = self.active.min(self.panes.len().saturating_sub(1));
-            self.scroll_active_tab = true;
+            self.request_close(CloseTarget::Tab(self.panes[index].session.id), ctx);
         }
         if new_shell {
             self.open_shell(ctx);
@@ -891,6 +997,10 @@ impl App {
             });
     }
     fn dialogs(&mut self, ctx: &egui::Context) {
+        if self.close_request.is_some() {
+            self.close_dialog(ctx);
+            return;
+        }
         let width = (ctx.screen_rect().width() - 96.).clamp(320., 568.);
         let body_height = (ctx.screen_rect().height() - 230.).max(120.);
         if self.settings {
@@ -1739,6 +1849,10 @@ impl eframe::App for App {
     }
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         self.qa_rects.clear();
+        if ctx.input(|i| i.viewport().close_requested()) && !self.close_approved {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.request_close(CloseTarget::Window, ctx);
+        }
         self.poll();
         self.poll_followups(ctx);
         if self.options.demo
@@ -1769,6 +1883,12 @@ impl eframe::App for App {
         }
         self.terminal(ctx);
         self.dialogs(ctx);
+        // egui keeps modal layers and hit-test data from the previous pass.
+        // After dismissal, render through their removal even if the child is
+        // silent; otherwise the next click can hit an invisible modal backdrop.
+        if !self.modal_open() && ctx.memory(|memory| memory.top_modal_layer().is_some()) {
+            ctx.request_repaint();
+        }
         if let Some((message, since)) = self.append_notice.clone() {
             if since.elapsed() < Duration::from_secs(6) {
                 let mut dismiss = false;

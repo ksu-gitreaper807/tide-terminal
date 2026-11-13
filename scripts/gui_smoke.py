@@ -29,6 +29,8 @@ def main():
     parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--titles-only", action="store_true")
     parser.add_argument("--chrome-only", action="store_true")
+    parser.add_argument("--close-only", action="store_true")
+    parser.add_argument("--logisim-binary", type=Path)
     parser.add_argument("--append-only", action="store_true")
     parser.add_argument("--pager-only", action="store_true")
     parser.add_argument("--btop-binary", type=Path)
@@ -51,6 +53,11 @@ def main():
         env.update(TIDE_CONFIG=str(scratch / ".tide.toml"), XDG_CONFIG_HOME=str(scratch / "config"),
                    XDG_DATA_HOME=str(scratch / "data"),
                    XDG_CACHE_HOME=str(scratch / "cache"))
+        if args.logisim_binary:
+            # Keep Java preferences and user-home writes inside the test fixture.
+            (scratch / "java-home").mkdir()
+            (scratch / "java-prefs").mkdir()
+            env["JAVA_TOOL_OPTIONS"] = f'-Djava.util.prefs.userRoot="{scratch / "java-prefs"}" -Duser.home="{scratch / "java-home"}"'
         process = subprocess.Popen([str(args.binary), "gui", "--gpu", args.gpu, "--qa", "--clean", "--shell", "/bin/bash",
                                     "--event-log", str(log), "--screenshot",str(args.output_dir / "canvas.png")], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         d = display.Display()
@@ -318,6 +325,131 @@ def main():
             results['gui_single_terminal_hides_tab_strip'] = 'passed'
             results['gui_floating_actions_are_reachable'] = 'passed'
 
+        def activate_terminal_window():
+            # A Java application can map/raise a window after its launcher returns.
+            # Activate only Tide on this isolated test display before targeting it.
+            from Xlib.protocol import event
+            root.send_event(event.ClientMessage(window=window, client_type=d.intern_atom('_NET_ACTIVE_WINDOW'),
+                data=(32, [2, X.CurrentTime, 0, 0, 0])),
+                event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+            window.configure(stack_mode=X.Above)
+            window.set_input_focus(X.RevertToParent, X.CurrentTime)
+            d.sync()
+            wait(lambda: getattr(d.get_input_focus().focus, 'id', None) == window.id, 'activate isolated Tide window')
+            time.sleep(.15)
+
+        def request_window_close():
+            from Xlib.protocol import event
+            message = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
+                data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
+            window.send_event(message, event_mask=0)
+            d.flush()
+
+        def check_close_protection():
+            import shlex
+            pid_file = scratch / 'close-job.pid'
+            code = f'import os,signal,time,pathlib; signal.signal(signal.SIGHUP,signal.SIG_IGN); pathlib.Path({str(pid_file)!r}).write_text(str(os.getpid())); time.sleep(60)'
+            start_run('python3 -u -c ' + shlex.quote(code))
+            wait(pid_file.exists, 'close fixture starts')
+            pid = int(pid_file.read_text())
+            count = len(ui_state()['tabs'])
+            key('w', ('Control_L', 'Shift_L'))
+            wait(lambda: 'close_confirm' in ui_state().get('ui', {}), 'busy tab requires confirmation')
+            click('terminal', .05, .05)  # Outside the warning: never an implicit choice.
+            wait(lambda: 'close_confirm' in ui_state().get('ui', {}), 'close warning persists until an explicit decision', timeout=3)
+            results['gui_close_confirmation_survives_outside_click'] = 'passed'
+            click('close_cancel')
+            wait(lambda: 'close_confirm' not in ui_state().get('ui', {}), 'keep open cancels close')
+            assert len(ui_state()['tabs']) == count and Path(f'/proc/{pid}').exists()
+            click('tab_close_' + str(ui_state()['active_tab']))
+            wait(lambda: 'close_confirm' in ui_state().get('ui', {}), 'first click after cancel reopens quiet terminal warning')
+            click('close_cancel')
+            results['gui_quiet_terminal_close_reopens_after_cancel'] = 'passed'
+            request_window_close()
+            wait(lambda: 'close_confirm' in ui_state().get('ui', {}), 'window close requires confirmation')
+            screenshot('close-protection.png')
+            key('Escape')
+            wait(lambda: 'close_confirm' not in ui_state().get('ui', {}), 'Escape cancels window close')
+            assert process.poll() is None and Path(f'/proc/{pid}').exists()
+            key('w', ('Control_L', 'Shift_L'))
+            click('close_confirm')
+            wait(lambda: len(ui_state()['tabs']) == count - 1, 'confirmed close removes only targeted tab')
+            wait(lambda: not Path(f'/proc/{pid}').exists(), 'confirmed close leaves no live or zombie fixture')
+            results['gui_busy_tab_close_can_be_cancelled'] = 'passed'
+            results['gui_window_close_can_be_cancelled'] = 'passed'
+            results['gui_confirmed_close_cleans_resistant_process'] = 'passed'
+            # Detection must still warn when the prompt has returned after &.
+            click('terminal')
+            pid_file.unlink()
+            text('python3 -u -c ' + shlex.quote(code) + ' &\n')
+            wait(pid_file.exists, 'background close fixture starts')
+            pid = int(pid_file.read_text())
+            request_window_close()
+            wait(lambda: 'close_confirm' in ui_state().get('ui', {}), 'background job protects window')
+            click('close_cancel')
+            assert Path(f'/proc/{pid}').exists()
+            # Finish this fixture through the shell so subsequent tests keep one idle tab.
+            text(f'kill -KILL {pid}; wait\n')
+            wait(lambda: not Path(f'/proc/{pid}').exists(), 'background fixture reaped')
+            results['gui_background_job_protects_idle_shell'] = 'passed'
+            for name, binary, arguments in [('btop', args.btop_binary, btop_arguments() if args.btop_binary else []), ('logisim', args.logisim_binary, [])]:
+                if not binary:
+                    continue
+                index = start_run(shlex.join([str(binary), *arguments]))
+                started = wait(lambda: event_after(index, lambda e:e['event']=='started'), f'{name} starts')
+                root_pid = started['event']['pid']
+                time.sleep(1.5)
+                # Record every process in this fixture's terminal session, including Java.
+                members = []
+                for stat in Path('/proc').glob('[0-9]*/stat'):
+                    try:
+                        fields = stat.read_text().rsplit(') ', 1)[1].split()
+                        if int(fields[3]) == root_pid:
+                            members.append(int(stat.parent.name))
+                    except (OSError, ValueError, IndexError):
+                        pass
+                assert members, f'{name} exited before close test'
+                if name == 'logisim':
+                    def java_windows():
+                        clients = root.get_full_property(d.intern_atom('_NET_CLIENT_LIST'), X.AnyPropertyType)
+                        found = []
+                        for identifier in clients.value if clients else []:
+                            client = d.create_resource_object('window', int(identifier))
+                            prop = client.get_full_property(d.intern_atom('_NET_WM_PID'), X.AnyPropertyType)
+                            if prop and int(prop.value[0]) in members and client.get_attributes().map_state == X.IsViewable:
+                                found.append(client)
+                        return found
+                    # Wait for the actual GUI, not merely its JVM launcher. Minimize
+                    # only this fixture's verified windows so they cannot cover Tide.
+                    clients = wait(java_windows, 'Logisim Java window appears')
+                    from Xlib.protocol import event
+                    for client in clients:
+                        root.send_event(event.ClientMessage(window=client, client_type=d.intern_atom('WM_CHANGE_STATE'),
+                            data=(32, [3, 0, 0, 0, 0])),
+                            event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+                    d.flush()
+                    wait(lambda: all(client.get_attributes().map_state != X.IsViewable for client in clients), 'isolated Logisim windows minimized')
+                activate_terminal_window()
+                click('tab_close_' + str(ui_state()['active_tab']))
+                wait(lambda: 'close_confirm' in ui_state().get('ui', {}), f'{name} requires confirmation')
+                click('close_cancel')
+                assert any(Path(f'/proc/{p}').exists() for p in members)
+                activate_terminal_window()
+                click('tab_close_' + str(ui_state()['active_tab']))
+                click('close_confirm')
+                wait(lambda: all(not Path(f'/proc/{p}').exists() for p in members), f'{name}: no surviving or zombie processes')
+                results[f'gui_{name}_close_guard_and_process_cleanup'] = 'passed'
+
+        def check_window_shutdown():
+            index = start_run('sleep 60')
+            started = wait(lambda: event_after(index, lambda e:e['event']=='started'), 'window shutdown fixture starts')
+            pid = started['event']['pid']
+            request_window_close()
+            click('close_confirm')
+            process.wait(timeout=8)
+            assert not Path(f'/proc/{pid}').exists(), 'confirmed window close did not reap direct child'
+            results['gui_confirmed_window_close_reaps_session'] = 'passed'
+
         def check_tab_titles():
             first = ui_state()['active_tab']
             command = "printf 'TITLE_ONE\\n'"
@@ -352,8 +484,7 @@ def main():
             screenshot('command-titles.png')
             key('w', ('Control_L', 'Shift_L'))
 
-        def check_btop():
-            import shlex
+        def btop_arguments():
             # Keep process command lines out of diagnostic logs and screenshots.
             config_dir = scratch / "config/btop"
             config_dir.mkdir(parents=True, exist_ok=True)
@@ -361,7 +492,11 @@ def main():
             help_text = subprocess.run([str(args.btop_binary), "--help"], env=env, capture_output=True, text=True, timeout=5, check=True).stdout
             utf_flag = next((flag for flag in ("--force-utf", "--utf-force") if flag in help_text), None)
             assert utf_flag, "btop --help advertises no supported force-UTF option"
-            index = start_run(shlex.quote(str(args.btop_binary)) + " " + utf_flag, shortcut=args.btop_only)
+            return [utf_flag]
+
+        def check_btop():
+            import shlex
+            index = start_run(shlex.join([str(args.btop_binary), *btop_arguments()]), shortcut=args.btop_only)
             wait(lambda: event_after(index, lambda e: e["event"] == "output" and any('\u2800' <= c <= '\u28ff' for c in e["text"])), "real btop emits Braille plot glyphs")
             time.sleep(2)
             screenshot("btop-utf.png")
@@ -495,6 +630,7 @@ def main():
             index=start_run("read reply; printf CLOSED_SOURCE_DONE")
             appended=append("and","touch "+shlex.quote(str(forbidden)))
             key("w",("Control_L","Shift_L"))
+            click("close_confirm")
             time.sleep(.4);assert not forbidden.exists()
             assert not event_after(appended,lambda e:e["event"]=="started")
             results["gui_append_source_close_cancels_queue"]="passed"
@@ -545,6 +681,10 @@ def main():
             if args.titles_only:
                 check_tab_titles()
                 return
+            if args.close_only:
+                check_close_protection()
+                check_window_shutdown()
+                return
             if args.chrome_only:
                 check_chrome()
                 return
@@ -561,6 +701,7 @@ def main():
                 check_pager()
                 return
             if not args.run_input_only:
+                check_close_protection()
                 check_chrome()
                 check_terminal_focus()
                 check_tab_titles()
@@ -853,18 +994,26 @@ def main():
             wait(lambda: event_after(index, lambda e: e["event"] == "command_ended" and e["code"] == 0), "preview shell command completes")
             time.sleep(.45)
             screenshot("terminal.png")
+            check_window_shutdown()
         finally:
-            # Request a normal window close so session cleanup runs.
-            from Xlib.protocol import event
-            close = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
-                                        data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
-            window.send_event(close, event_mask=0)
-            d.flush()
-            try:
-                process.wait(timeout=8)
-            except subprocess.TimeoutExpired:
-                process.terminate()
-                process.wait(timeout=5)
+            if process.poll() is None:
+                # Request a normal window close so session cleanup runs.
+                from Xlib.protocol import event
+                close = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
+                                            data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
+                window.send_event(close, event_mask=0)
+                d.flush()
+                try:
+                    deadline = time.monotonic() + 3
+                    while process.poll() is None and time.monotonic() < deadline:
+                        if 'close_confirm' in ui_state().get('ui', {}):
+                            click('close_confirm')
+                            break
+                        time.sleep(.05)
+                    process.wait(timeout=8)
+                except subprocess.TimeoutExpired:
+                    process.terminate()
+                    process.wait(timeout=5)
             if log.exists():
                 (args.output_dir / "events.jsonl").write_text(log.read_text())
             (args.output_dir / "gui-results.json").write_text(json.dumps(results, indent=2) + "\n")

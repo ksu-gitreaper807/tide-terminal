@@ -6,6 +6,7 @@ pub mod config;
 pub mod history;
 pub mod observer;
 pub mod platform;
+mod processes;
 pub mod rules;
 pub mod session;
 pub mod split_capture;

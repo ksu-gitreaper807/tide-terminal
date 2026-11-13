@@ -179,6 +179,7 @@ pub struct Session {
     worker: Option<std::thread::JoinHandle<()>>,
     wake: Waker,
     selection: Option<PathBuf>,
+    processes: Arc<Mutex<crate::processes::SessionProcesses>>,
 }
 
 fn setup_command(options: &Options) -> Result<(CommandBuilder, Option<tempfile::TempDir>)> {
@@ -404,7 +405,7 @@ impl Session {
             stderr_pair.master.as_ref(),
             matches!(&options.launch,Launch::Shell{path,..} if matches!(std::path::Path::new(path).file_name().and_then(|p|p.to_str()),Some("bash"|"zsh"))),
         )?;
-        let child = pair
+        let mut child = pair
             .slave
             .spawn_command(command)
             .context("Could not launch terminal process")?;
@@ -413,6 +414,16 @@ impl Session {
         let pid = child
             .process_id()
             .context("The PTY did not return a process ID")?;
+        let processes = match crate::processes::SessionProcesses::new(pid) {
+            Ok(processes) => Arc::new(Mutex::new(processes)),
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error)
+                    .context("Could not track terminal processes (Linux pidfds required)");
+            }
+        };
+        let worker_processes = processes.clone();
         let writer = AsyncWriter::new(pair.master.take_writer()?);
         let stderr_writer = AsyncWriter::new(stderr_pair.master.take_writer()?);
         let (read_tx, read_rx) = bounded(64);
@@ -464,6 +475,7 @@ impl Session {
                 let _append_server = append_server;
                 let mut w = Worker {
                     options,
+                    processes: worker_processes,
                     child,
                     _reader: reader,
                     stderr_master: stderr_pair.master,
@@ -511,6 +523,7 @@ impl Session {
             worker: Some(worker),
             wake,
             selection,
+            processes,
         })
     }
     pub fn write(&self, bytes: impl Into<Vec<u8>>) -> Result<()> {
@@ -536,6 +549,27 @@ impl Session {
     pub fn is_running(&self) -> bool {
         self.state.lock().unwrap().running
     }
+    /// Processes still owned by this terminal, including background jobs.
+    pub fn active_processes(&self) -> Vec<String> {
+        let (managed, running, at_prompt, command) = {
+            let state = self.state.lock().unwrap();
+            (
+                state.managed,
+                state.running,
+                state.at_prompt,
+                state.command.clone(),
+            )
+        };
+        let mut names = self.processes.lock().unwrap().active_names(managed);
+        if names.is_empty() && running && !at_prompt {
+            names.push(if command.is_empty() {
+                "Shell is still starting or running".into()
+            } else {
+                command
+            });
+        }
+        names
+    }
     pub fn set_waker(&self, wake: impl Fn() + Send + Sync + 'static) {
         *self.wake.lock().unwrap() = Some(Box::new(wake));
     }
@@ -554,6 +588,7 @@ impl Session {
 }
 impl Drop for Session {
     fn drop(&mut self) {
+        self.processes.lock().unwrap().shutdown();
         let _ = self.tx.send(Control::Close);
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
@@ -562,6 +597,7 @@ impl Drop for Session {
 }
 
 struct Worker {
+    processes: Arc<Mutex<crate::processes::SessionProcesses>>,
     _reader: split_pty::Reader,
     stderr_master: Box<dyn MasterPty + Send>,
     recorder: SplitCapture,
@@ -933,7 +969,15 @@ impl Worker {
                 recv(tick)->_=>{}
             }
             let now = platform::elapsed_clock();
-            if self.exit.is_none() {
+            let child_exited =
+                self.exit.is_none() && crate::processes::child_exited(self.pid).unwrap_or(true);
+            {
+                let mut processes = self.processes.lock().unwrap();
+                if child_exited || (self.exit.is_some() && processes.refresh_due()) {
+                    processes.refresh();
+                }
+            }
+            if child_exited {
                 match self.child.try_wait() {
                     Ok(Some(status)) => {
                         self.exit_signal = status.signal().map(str::to_owned);
