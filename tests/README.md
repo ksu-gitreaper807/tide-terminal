@@ -23,6 +23,8 @@ cargo test --test observer_cases
 
 PTY tests run serially in the aggregate runner because interactive completion tests contend for timing under heavy parallel compilation. Their waits have deadlines; a timeout is a failure. There are no automatic retries or silent shell skips. Bash, Zsh, Fish, Python 3, a C compiler, and the project's ordinary Linux build dependencies must be installed. The Rust tier needs no visible window or GPU. The desktop feature remains enabled so font coverage and UI input mapping tests are included.
 
+One hosted run stalled at the password-prompt test and was manually cancelled; the same test then passed 100 consecutive bounded local runs. Its cause is not established. That test now also has a 30-second whole-test deadline covering spawn and destruction, beyond its existing event deadlines. On expiry it exits unsuccessfully and prints the current stage and Linux thread wait/syscall information directly into the CI log. It never dumps input, output or command lines, and does not retry the test.
+
 | Layer | Library | Checks |
 |---|---|---|
 | Screen semantics | `terminal_conformance.rs`, `cases/terminal.json` | 62 named fixtures: cursor movement/clamping, tabs, hard/soft line breaks, erasure, insertion/deletion, scrolling regions, alternate screen, modes, Unicode width/combining marks, colors/attributes, titles, replies, cancellation and reset |

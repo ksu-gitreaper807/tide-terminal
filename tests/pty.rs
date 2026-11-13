@@ -8,6 +8,9 @@ use tide_terminal::{
     session::{Event, Launch, Options, Session},
 };
 
+#[path = "support/deadline.rs"]
+mod deadline;
+
 fn command(script: &str, rules: RuleSpec) -> Options {
     let mut o = Options::shell("/bin/bash", std::env::temp_dir());
     o.launch = Launch::Command(vec![
@@ -263,6 +266,7 @@ fn fingerprint_prompt_alerts_without_keyboard_input_and_handles_password_fallbac
 
 #[test]
 fn actual_password_prompt_alerts_once_and_accepts_input_without_recording_it() {
+    let deadline = deadline::Deadline::new("actual_password_prompt", Duration::from_secs(30));
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("history.db");
     let mut o = command(
@@ -271,7 +275,9 @@ fn actual_password_prompt_alerts_once_and_accepts_input_without_recording_it() {
     );
     o.private = false;
     o.history = Some(db.clone());
+    deadline.stage("spawning session");
     let s = Session::spawn(o).unwrap();
+    deadline.stage("waiting for password attention");
     let events = wait(&s, Duration::from_secs(4), |e| {
         matches!(e, Event::Attention { .. })
     });
@@ -290,6 +296,7 @@ fn actual_password_prompt_alerts_once_and_accepts_input_without_recording_it() {
             .any(|e| matches!(e, Event::Attention { .. }))
     );
     s.write(b"secret-test\n".to_vec()).unwrap();
+    deadline.stage("waiting for command exit");
     let events = finish(&s);
     assert!(
         events
@@ -301,6 +308,7 @@ fn actual_password_prompt_alerts_once_and_accepts_input_without_recording_it() {
             .iter()
             .any(|e| matches!(e,Event::Output{text}if text.contains("secret-test")))
     );
+    deadline.stage("checking history privacy");
     assert!(
         History::open(&db)
             .unwrap()
@@ -308,6 +316,9 @@ fn actual_password_prompt_alerts_once_and_accepts_input_without_recording_it() {
             .unwrap()
             .is_empty()
     );
+    deadline.stage("dropping session and joining PTY threads");
+    drop(s);
+    deadline.stage("removing temporary history directory");
 }
 
 #[test]
