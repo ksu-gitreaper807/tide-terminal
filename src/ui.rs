@@ -31,6 +31,12 @@ pub struct UiOptions {
 }
 
 pub fn launch(options: UiOptions) -> Result<()> {
+    let icon = image::load_from_memory_with_format(
+        include_bytes!("../assets/branding/window-icon.png"),
+        image::ImageFormat::Png,
+    )
+    .context("Could not decode the bundled Tide icon")?
+    .into_rgba8();
     let title = if options.qa {
         "Tide Terminal QA"
     } else {
@@ -41,6 +47,12 @@ pub fn launch(options: UiOptions) -> Result<()> {
             .with_inner_size([1120., 740.])
             .with_min_inner_size([640., 420.])
             .with_transparent(true)
+            .with_app_id("tide-terminal")
+            .with_icon(egui::IconData {
+                width: icon.width(),
+                height: icon.height(),
+                rgba: icon.into_raw(),
+            })
             .with_title(title),
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: crate::gpu::configuration(options.gpu.unwrap_or(Config::load()?.gpu)),

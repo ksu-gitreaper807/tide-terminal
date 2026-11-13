@@ -1,5 +1,7 @@
 Tide's test library checks terminal semantics and the product features layered on top of them. It is a local automated regression suite, not a claim of complete VT, xterm, Kitty, Unicode or platform conformance.
 
+The GUI startup check reads the actual X11 `_NET_WM_ICON` property and compares its 128×128 ARGB pixels with Tide's bundled native export. This verifies that the application publishes its own artwork instead of the framework default. The editable SVG logo/favicon sources and export instructions are in [assets/branding](../assets/branding/README.md); desktop entry syntax is checked with `desktop-file-validate packaging/tide-terminal.desktop`. Wayland uses the matching `tide-terminal` desktop ID and installed SVG icon rather than that X11 property.
+
 Run the automated library from the application directory:
 
 ```bash

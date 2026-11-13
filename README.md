@@ -1,4 +1,9 @@
-**Tide Terminal** is a native Rust terminal for Linux, with Bash, Zsh, and Fish integration, inline suggestions, input alerts, animated cursor movement, and timer/output rules for owned command runs.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/tide-logo-dark.svg">
+  <img src="assets/branding/tide-logo.svg" alt="Tide Terminal" width="260">
+</picture>
+
+**Tide Terminal** is a native Rust terminal for Linux, with Bash, Zsh, and Fish integration, inline suggestions, input alerts, animated cursor movement, and timer/output rules for owned command runs. [SVG logo, app icon and favicon sources](assets/branding/README.md) are included.
 
 The application defaults to a surface-compatible **integrated GPU**, preferring Vulkan. You can explicitly switch using **Settings → Renderer → Save**, then restart, or override one launch:
 

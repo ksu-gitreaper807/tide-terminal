@@ -737,6 +737,19 @@ def main():
             if expected:
                 assert gpu['device_type'] == expected, gpu
             results['integrated_gpu_rendering' if args.gpu == 'integrated' else 'explicit_renderer'] = gpu
+            # Verify the icon that winit actually publishes to the window manager.
+            # This catches falling back to the framework's generic window icon.
+            icon = window.get_full_property(d.intern_atom('_NET_WM_ICON'), X.AnyPropertyType)
+            assert icon is not None and icon.format == 32, 'native application icon is missing'
+            pixels = list(icon.value)
+            assert pixels[:2] == [128, 128] and len(pixels) == 2 + 128 * 128
+            icon_path = Path(__file__).resolve().parent.parent / 'assets/branding/window-icon.png'
+            with Image.open(icon_path) as image:
+                rgba = image.convert('RGBA').tobytes()
+            assert pixels[2:] == [(a << 24) | (r << 16) | (g << 8) | b
+                                  for r, g, b, a in zip(rgba[0::4], rgba[1::4], rgba[2::4], rgba[3::4])], \
+                'window manager icon differs from the Tide artwork'
+            results['gui_native_window_uses_tide_icon'] = 'passed'
             if args.focus_only:
                 check_terminal_focus()
                 return

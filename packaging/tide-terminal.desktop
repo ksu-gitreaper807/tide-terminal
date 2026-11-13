@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Tide Terminal
+GenericName=Terminal Emulator
+Comment=Terminal with shell integration, input alerts and command timers
+Exec=tide-terminal gui
+Icon=tide-terminal
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=shell;console;command;timer;
