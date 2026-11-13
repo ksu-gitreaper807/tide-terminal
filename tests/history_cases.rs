@@ -1,4 +1,56 @@
 use tide_terminal::history::History;
+#[path = "support/deadline.rs"]
+mod deadline;
+
+#[test]
+fn bundled_sqlite_includes_wal_close_open_deadlock_fixes() {
+    assert!(
+        rusqlite::version_number() >= 3_051_003,
+        "SQLite {} predates the WAL mutex-order and reset fixes",
+        rusqlite::version()
+    );
+}
+
+#[test]
+fn opening_history_while_the_last_connection_closes_stays_responsive() {
+    use std::sync::{Arc, Barrier};
+    let deadline = deadline::Deadline::new(
+        "history_close_open_race",
+        std::time::Duration::from_secs(30),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("history.db");
+    let original = History::open(&path).unwrap();
+    original
+        .record("retained command", "/original", "bash", 17)
+        .unwrap();
+    drop(original);
+    let phase = Arc::new(Barrier::new(2));
+    let peer = phase.clone();
+    let peer_path = path.clone();
+    deadline.stage("opening history concurrently with last-connection close");
+    let closer = std::thread::spawn(move || {
+        for _ in 0..256 {
+            let history = History::open(&peer_path).unwrap();
+            assert_eq!(history.search("retained", "", 10).unwrap().len(), 1);
+            peer.wait();
+            drop(history);
+            peer.wait();
+        }
+    });
+    for _ in 0..256 {
+        phase.wait();
+        let history = History::open(&path).unwrap();
+        let entries = history.search("retained", "", 10).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].cwd, "/original");
+        assert_eq!(entries[0].exit_code, 17);
+        drop(history);
+        phase.wait();
+    }
+    closer.join().unwrap();
+}
+
 fn history() -> (tempfile::TempDir, History) {
     let dir = tempfile::tempdir().unwrap();
     let history = History::open(&dir.path().join("nested/history.sqlite3")).unwrap();
