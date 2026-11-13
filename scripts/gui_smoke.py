@@ -249,6 +249,20 @@ def main():
             wait(lambda: event_after(index, lambda e: e["event"] == "started" and e["managed"]), "managed process started")
             return index
 
+        def close_fixture_tab():
+            # Teardown owns these tabs and explicitly accepts the new close guard.
+            # A shell can still be starting, or have a background helper, even
+            # after the test command itself has completed.
+            wait(lambda: 'close_confirm' not in ui_state().get('ui', {}), 'previous close dialog clears')
+            previous = len(ui_state()['tabs'])
+            key('w', ('Control_L', 'Shift_L'))
+            outcome = wait(lambda: 'closed' if len(ui_state().get('tabs', [])) < previous
+                           else ('confirm' if 'close_confirm' in ui_state().get('ui', {}) else None),
+                           'fixture tab closes or requests confirmation')
+            if outcome == 'confirm':
+                click('close_confirm')
+            wait(lambda: len(ui_state()['tabs']) < previous, 'fixture tab closes after explicit decision')
+
         def check_terminal_focus():
             import shlex
             expected = b'\t\x1b[Z\x1b[D\x1b[C\x1b[A\x1b[Babc'
@@ -336,7 +350,13 @@ def main():
             window.set_input_focus(X.RevertToParent, X.CurrentTime)
             d.sync()
             wait(lambda: getattr(d.get_input_focus().focus, 'id', None) == window.id, 'activate isolated Tide window')
-            time.sleep(.15)
+            # XSetInputFocus alone does not establish KWin's Wayland seat focus.
+            # Activate through a harmless click before targeting a control.
+            click('terminal', .95, .95)
+            active_atom = d.intern_atom('_NET_ACTIVE_WINDOW')
+            if root.get_full_property(active_atom, X.AnyPropertyType):
+                wait(lambda: int(root.get_full_property(active_atom, X.AnyPropertyType).value[0]) == window.id,
+                     'compositor activates Tide, not just X11 input focus')
 
         def request_window_close():
             from Xlib.protocol import event
@@ -371,8 +391,7 @@ def main():
             key('Escape')
             wait(lambda: 'close_confirm' not in ui_state().get('ui', {}), 'Escape cancels window close')
             assert process.poll() is None and Path(f'/proc/{pid}').exists()
-            key('w', ('Control_L', 'Shift_L'))
-            click('close_confirm')
+            close_fixture_tab()
             wait(lambda: len(ui_state()['tabs']) == count - 1, 'confirmed close removes only targeted tab')
             wait(lambda: not Path(f'/proc/{pid}').exists(), 'confirmed close leaves no live or zombie fixture')
             results['gui_busy_tab_close_can_be_cancelled'] = 'passed'
@@ -634,11 +653,8 @@ def main():
             time.sleep(.4);assert not forbidden.exists()
             assert not event_after(appended,lambda e:e["event"]=="started")
             results["gui_append_source_close_cancels_queue"]="passed"
-            def tab_count():
-                return sum(name.startswith("tab_") and name[4:].isdigit() for name in ui_state().get("ui",{}))
-            while tab_count()>1:
-                previous=tab_count();key("w",("Control_L","Shift_L"))
-                wait(lambda:tab_count()<previous,"close append test tabs")
+            while len(ui_state()['tabs']) > 1:
+                close_fixture_tab()
 
             # Exercise A_: from the real prompt, not from the Run/Append dialogs.
             def prompt_command(command):
@@ -977,12 +993,8 @@ def main():
 
             # A clean preview of the actual application and real project files.
             # Close only this test's finished tabs; keep its original shell.
-            def tab_count():
-                return sum(name.startswith("tab_") and name[4:].isdigit() for name in ui_state().get("ui", {}))
-            while tab_count() > 1:
-                previous = tab_count()
-                key("w", ("Control_L", "Shift_L"))
-                wait(lambda: tab_count() < previous, "test tab closes before the next shortcut")
+            while len(ui_state()['tabs']) > 1:
+                close_fixture_tab()
             click("settings")
             click("opacity", .98)
             key("Escape")
@@ -996,29 +1008,34 @@ def main():
             screenshot("terminal.png")
             check_window_shutdown()
         finally:
-            if process.poll() is None:
-                # Request a normal window close so session cleanup runs.
-                from Xlib.protocol import event
-                close = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
-                                            data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
-                window.send_event(close, event_mask=0)
-                d.flush()
-                try:
-                    deadline = time.monotonic() + 3
-                    while process.poll() is None and time.monotonic() < deadline:
-                        if 'close_confirm' in ui_state().get('ui', {}):
-                            click('close_confirm')
-                            break
-                        time.sleep(.05)
-                    process.wait(timeout=8)
-                except subprocess.TimeoutExpired:
-                    process.terminate()
-                    process.wait(timeout=5)
-            if log.exists():
-                (args.output_dir / "events.jsonl").write_text(log.read_text())
-            (args.output_dir / "gui-results.json").write_text(json.dumps(results, indent=2) + "\n")
-            if helper:
-                helper.stdin.close();helper.wait(timeout=3)
+            try:
+                if process.poll() is None:
+                    # Request a normal window close so session cleanup runs.
+                    from Xlib.protocol import event
+                    close = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
+                                                data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
+                    window.send_event(close, event_mask=0)
+                    d.flush()
+                    try:
+                        deadline = time.monotonic() + 3
+                        while process.poll() is None and time.monotonic() < deadline:
+                            if 'close_confirm' in ui_state().get('ui', {}):
+                                click('close_confirm')
+                                break
+                            time.sleep(.05)
+                        process.wait(timeout=8)
+                    except subprocess.TimeoutExpired:
+                        process.terminate()
+                        process.wait(timeout=5)
+                    except AssertionError:
+                        if process.poll() is None:
+                            raise
+            finally:
+                if log.exists():
+                    (args.output_dir / "events.jsonl").write_text(log.read_text())
+                (args.output_dir / "gui-results.json").write_text(json.dumps(results, indent=2) + "\n")
+                if helper:
+                    helper.stdin.close();helper.wait(timeout=3)
         print(json.dumps(results, indent=2))
 
 
