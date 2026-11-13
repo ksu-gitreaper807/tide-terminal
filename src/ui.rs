@@ -60,6 +60,7 @@ struct Pane {
     cursor: Option<Pos2>,
     selection: Option<((usize, usize), (usize, usize))>,
     last_size: (u16, u16),
+    visibility: f32,
     mouse_down: Option<u8>,
 }
 #[derive(Default)]
@@ -282,12 +283,15 @@ impl App {
     fn push(&mut self, session: Session, label: String, ctx: &egui::Context) {
         let c = ctx.clone();
         session.set_waker(move || c.request_repaint());
+        ctx.animate_value_with_time(egui::Id::new(("tab_open", session.id)), 0., 0.18);
+        ctx.animate_value_with_time(egui::Id::new(("pane_visible", session.id)), 0., 0.18);
         self.panes.push(Pane {
             session,
             label,
             cursor: None,
             selection: None,
             last_size: (0, 0),
+            visibility: 0.,
             mouse_down: None,
         });
         self.active = self.panes.len() - 1;
@@ -621,49 +625,53 @@ impl App {
     fn toolbar(&mut self, ctx: &egui::Context) {
         let mut close = None;
         let mut new_shell = false;
+        let reveal = ctx.animate_value_with_time(
+            egui::Id::new("multiple_terminal_tabs"),
+            f32::from(self.panes.len() > 1),
+            0.18,
+        );
         egui::TopBottomPanel::top("session_bar")
-            .exact_height(44.)
-            .frame(
-                egui::Frame::NONE
-                    .fill(CHROME)
-                    .inner_margin(egui::Margin::symmetric(10, 6)),
-            )
+            .show_separator_line(false)
+            .exact_height(58.)
+            .frame(egui::Frame::NONE.fill(Color32::from_rgba_unmultiplied(BG.r(), BG.g(), BG.b(), (self.config.opacity * 255.) as u8))
+                .inner_margin(egui::Margin::symmetric(10, 8)))
             .show(ctx, |ui| {
-                self.qa_rects.insert("tab_strip".into(), ui.max_rect());
+                ui.spacing_mut().item_spacing.x = 8.;
                 ui.horizontal(|ui| {
-                    let tab_width = (ui.available_width() - 284.).max(100.);
+                    let tab_width = (ui.available_width() - 292.).max(100.);
                     if (self.tab_view_width - tab_width).abs() > 1. {
                         self.scroll_active_tab = true;
                         self.tab_view_width = tab_width;
                     }
-                    ui.allocate_ui_with_layout(
-                        Vec2::new(tab_width, 30.),
-                        egui::Layout::left_to_right(egui::Align::Center),
-                        |ui| {
-                            egui::ScrollArea::horizontal()
-                                .id_salt("session_tabs")
-                                .scroll_bar_visibility(
-                                    egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
-                                )
-                                .auto_shrink([false, false])
-                                .show(ui, |ui| {
-                                    ui.spacing_mut().item_spacing.x = 4.;
-                                    ui.horizontal(|ui| {
-                                        for (i, pane) in self.panes.iter().enumerate() {
-                                            let state = pane.session.state.lock().unwrap();
-                                            let active = i == self.active;
-                                            let (rect, response) = ui.allocate_exact_size(
-                                                Vec2::new(142., 30.),
-                                                Sense::click(),
-                                            );
-                                            response.widget_info(|| {
-                                                egui::WidgetInfo::selected(
-                                                    egui::WidgetType::SelectableLabel,
-                                                    ui.is_enabled(),
-                                                    active,
-                                                    &pane.label,
-                                                )
-                                            });
+                    ui.allocate_ui_with_layout(Vec2::new(tab_width, 40.), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.set_min_size(Vec2::new(tab_width, 40.));
+                        if reveal <= 0.001 { return; }
+                        self.qa_rects.insert("tab_strip".into(), ui.max_rect());
+                        egui::ScrollArea::horizontal().id_salt("session_tabs")
+                            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                            .auto_shrink([false, false]).show(ui, |ui| {
+                            ui.spacing_mut().item_spacing.x = 4.;
+                            ui.horizontal(|ui| {
+                                for (i, pane) in self.panes.iter().enumerate() {
+                                    let opening = ctx.animate_value_with_time(egui::Id::new(("tab_open", pane.session.id)), 1., 0.18);
+                                    let selected = ctx.animate_value_with_time(egui::Id::new(("tab_selected", pane.session.id)), f32::from(i == self.active), 0.16);
+                                    ui.scope(|ui| {
+                                        ui.multiply_opacity(reveal * (0.74 + 0.26 * selected) * (0.45 + 0.55 * opening));
+
+                                    let state = pane.session.state.lock().unwrap();
+                                    let active = i == self.active;
+                                    let (rect, response) = ui.allocate_exact_size(
+                                        Vec2::new(142., 30.),
+                                        Sense::click(),
+                                    );
+                                    response.widget_info(|| {
+                                        egui::WidgetInfo::selected(
+                                            egui::WidgetType::SelectableLabel,
+                                            ui.is_enabled(),
+                                            active,
+                                            &pane.label,
+                                        )
+                                    });
                                             let close_rect = Rect::from_center_size(
                                                 Pos2::new(rect.right() - 15., rect.center().y),
                                                 Vec2::splat(22.),
@@ -675,27 +683,27 @@ impl App {
                                                     Sense::click(),
                                                 )
                                                 .on_hover_text("Close terminal · Ctrl+Shift+W");
-                                            if active
+                                            if selected > 0.
                                                 || response.hovered()
                                                 || close_response.hovered()
                                             {
                                                 ui.painter().rect_filled(
                                                     rect,
                                                     5.,
-                                                    if active {
-                                                        Color32::from_rgb(43, 48, 56)
+                                                    if selected > 0. {
+                                                        Color32::from_rgba_unmultiplied(43, 48, 56, (255. * selected) as u8)
                                                     } else {
                                                         Color32::from_rgb(34, 38, 45)
                                                     },
                                                 );
                                             }
-                                            if active {
+                                            if selected > 0. {
                                                 ui.painter().line_segment(
                                                     [
                                                         rect.left_bottom() + Vec2::new(9., -1.),
                                                         rect.right_bottom() + Vec2::new(-9., -1.),
                                                     ],
-                                                    Stroke::new(1.5_f32, ACCENT),
+                                                    Stroke::new(1.5_f32, ACCENT.gamma_multiply(selected)),
                                                 );
                                             }
                                             if response.has_focus() {
@@ -733,7 +741,7 @@ impl App {
                                                 Pos2::new(text_left, rect.center().y - title.size().y / 2.),
                                                 title, text_color,
                                             );
-                                            if active
+                                            if selected > 0.
                                                 || response.hovered()
                                                 || close_response.hovered()
                                             {
@@ -766,69 +774,43 @@ impl App {
                                                 pane.label,
                                                 theme::short_path(&state.cwd)
                                             ));
-                                        }
+
                                     });
-                                });
-                        },
-                    );
-                    new_shell = track(
-                        &mut self.qa_rects,
-                        "new_tab",
-                        theme::icon_button(ui, Icon::Plus, "New terminal · Ctrl+Shift+T"),
-                    )
-                    .clicked();
-                    ui.separator();
-                    if track(
-                        &mut self.qa_rects,
-                        "run",
-                        ui.add(egui::Button::new("Run").frame(false))
-                            .on_hover_text("Run a command with stop rules · Ctrl+Shift+R"),
-                    )
-                    .clicked()
-                    {
-                        self.append_open = false;
-            self.run_open = true;
-                        self.run_focus = true;
-                        self.settings = false;
-                        self.history_open = false;
-                    }
-                    if track(&mut self.qa_rects, "append", ui.add(egui::Button::new("Append").frame(false)).on_hover_text("Append &&, process captured output with |, or append to a file with >> · Ctrl+Shift+A")).clicked() {
-                        self.show_append();
-                    }
-                    if track(
-                        &mut self.qa_rects,
-                        "history",
-                        ui.add(egui::Button::new("History").frame(false))
-                            .on_hover_text("Search command history · Ctrl+Shift+H"),
-                    )
-                    .clicked()
-                    {
-                        self.append_open = false;
-            self.history_open = true;
-                        self.history_focus = true;
-                        self.run_open = false;
-                        self.settings = false;
-                        self.load_history();
-                    }
-                    if track(
-                        &mut self.qa_rects,
-                        "settings",
-                        theme::icon_button(ui, Icon::Settings, "Settings · Ctrl+Shift+,"),
-                    )
-                    .clicked()
-                    {
-                        self.append_open = false;
-            self.settings = !self.settings;
-                        self.history_open = false;
-                        self.run_open = false;
-                    }
+                                }
+                            });
+                        });
+                    });
+                    let panel = egui::Frame::NONE
+                        .fill(Color32::from_rgba_unmultiplied(35, 41, 50, 218))
+                        .stroke(Stroke::new(1_f32, Color32::from_white_alpha(24)))
+                        .corner_radius(14)
+                        .shadow(egui::epaint::Shadow { offset: [0, 5], blur: 16, spread: 0, color: Color32::from_black_alpha(60) })
+                        .inner_margin(egui::Margin::symmetric(8, 5))
+                        .show(ui, |ui| {
+                            ui.spacing_mut().item_spacing.x = 6.;
+                            ui.spacing_mut().button_padding = Vec2::new(10., 6.);
+                            let widgets = &mut ui.visuals_mut().widgets;
+                            widgets.inactive.weak_bg_fill = Color32::from_rgba_unmultiplied(62, 71, 84, 135);
+                            widgets.inactive.bg_stroke = Stroke::new(1_f32, Color32::from_white_alpha(8));
+                            widgets.hovered.weak_bg_fill = Color32::from_rgba_unmultiplied(81, 103, 132, 190);
+                            widgets.hovered.bg_stroke = Stroke::new(1_f32, Color32::from_white_alpha(28));
+                            widgets.active.weak_bg_fill = Color32::from_rgba_unmultiplied(77, 112, 159, 210);
+                            ui.horizontal(|ui| {
+                                new_shell = track(&mut self.qa_rects, "new_tab", glass_icon_button(ui, Icon::Plus, "New terminal · Ctrl+Shift+T")).clicked();
+                                if track(&mut self.qa_rects, "run", glass_text_button(ui, "Run", 48.).on_hover_text("Run a command with stop rules · Ctrl+Shift+R")).clicked() {
+                                    self.append_open = false; self.run_open = true; self.run_focus = true; self.settings = false; self.history_open = false;
+                                }
+                                if track(&mut self.qa_rects, "append", glass_text_button(ui, "Append", 66.).on_hover_text("Append &&, process captured output with |, or append to a file with >> · Ctrl+Shift+A")).clicked() { self.show_append(); }
+                                if track(&mut self.qa_rects, "history", glass_text_button(ui, "History", 66.).on_hover_text("Search command history · Ctrl+Shift+H")).clicked() {
+                                    self.append_open = false; self.history_open = true; self.history_focus = true; self.run_open = false; self.settings = false; self.load_history();
+                                }
+                                if track(&mut self.qa_rects, "settings", glass_icon_button(ui, Icon::Settings, "Settings · Ctrl+Shift+," )).clicked() {
+                                    self.append_open = false; self.settings = !self.settings; self.run_open = false; self.history_open = false;
+                                }
+                            });
+                        });
+                    self.qa_rects.insert("action_panel".into(), panel.response.rect);
                 });
-                let rect = ui.max_rect();
-                theme::separator(
-                    ui,
-                    Pos2::new(rect.left(), rect.bottom() + 5.),
-                    Pos2::new(rect.right(), rect.bottom() + 5.),
-                );
             });
         if let Some(index) = close {
             self.panes.remove(index);
@@ -1463,7 +1445,8 @@ impl App {
                 );
                 self.qa_rects.insert("terminal".into(), rect);
                 let view = p.session.snapshot();
-                let painter = ui.painter_at(rect);
+                let mut painter = ui.painter_at(rect);
+                painter.multiply_opacity(0.65 + 0.35 * p.visibility);
                 let point = |pos: Pos2| -> (usize, usize) {
                     (
                         ((pos.y - rect.top()) / cell.y)
@@ -1777,6 +1760,13 @@ impl eframe::App for App {
             focus_terminal(ctx, terminal_input_id(pane.session.id));
         }
         self.toolbar(ctx);
+        for (index, pane) in self.panes.iter_mut().enumerate() {
+            pane.visibility = ctx.animate_value_with_time(
+                egui::Id::new(("pane_visible", pane.session.id)),
+                f32::from(index == self.active),
+                0.18,
+            );
+        }
         self.terminal(ctx);
         self.dialogs(ctx);
         if let Some((message, since)) = self.append_notice.clone() {
@@ -1814,7 +1804,8 @@ impl eframe::App for App {
                 .collect();
             let value = serde_json::json!({"ui":rects,"scale":ctx.pixels_per_point(),
                 "run_command":self.form.command,"run_timeout":self.form.timeout,"active_tab":self.active,
-                "tabs":self.panes.iter().map(|pane| &pane.label).collect::<Vec<_>>()})
+                "tabs":self.panes.iter().map(|pane| &pane.label).collect::<Vec<_>>(),
+                "pane_transition":self.panes.get(self.active).map(|pane| pane.visibility)})
             .to_string();
             if value != self.last_qa {
                 if let Some(log) = &mut self.event_log {
@@ -1856,6 +1847,34 @@ impl eframe::App for App {
             }
         }
     }
+}
+
+fn glass_text_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
+    ui.add(
+        egui::Button::new(RichText::new(label).size(13.).color(INK))
+            .min_size(Vec2::new(width, 30.))
+            .corner_radius(8),
+    )
+}
+
+fn glass_icon_button(ui: &mut egui::Ui, kind: Icon, tooltip: &str) -> egui::Response {
+    let response = ui
+        .add(
+            egui::Button::new("")
+                .min_size(Vec2::splat(30.))
+                .corner_radius(8),
+        )
+        .on_hover_text(tooltip);
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), tooltip)
+    });
+    theme::icon(
+        ui,
+        response.rect,
+        kind,
+        if response.hovered() { INK } else { MUTED },
+    );
+    response
 }
 
 fn terminal_input_id(session: u64) -> egui::Id {

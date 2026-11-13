@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--titles-only", action="store_true")
+    parser.add_argument("--chrome-only", action="store_true")
     parser.add_argument("--append-only", action="store_true")
     parser.add_argument("--pager-only", action="store_true")
     parser.add_argument("--btop-binary", type=Path)
@@ -259,7 +260,6 @@ def main():
                  'Tab, Shift+Tab and arrows reach the child without needing Escape', timeout=5)
             wait(lambda: event_after(index, lambda e:e['event']=='exited' and e['code']==0), 'focus reader exits')
             results['gui_terminal_navigation_keeps_keyboard_focus'] = 'passed'
-            key('w', ('Control_L', 'Shift_L'))
             click('tab_0')
             index = len(records())
             text("printf 'FOCUS_TAB_CLICK_OK\\n'\n")
@@ -282,6 +282,41 @@ def main():
                  'typing resumes after cancel without terminal click or Escape')
             assert not event_after(index, lambda e:e['event']=='command_started' and 'DIALOG_MUST_NOT_RUN' in e['command'])
             results['gui_modal_cancel_restores_terminal_typing'] = 'passed'
+            click('tab_1')
+            key('w', ('Control_L', 'Shift_L'))
+
+        def check_chrome():
+            wait(lambda: 'tab_strip' not in ui_state().get('ui', {}), 'single terminal hides tab strip')
+            def actions_fit():
+                ui = ui_state().get('ui', {})
+                if 'action_panel' not in ui:
+                    return False
+                a, b, c, d = ui['action_panel']
+                return all(name in ui and a <= ui[name][0] < ui[name][2] <= c
+                           and b <= ui[name][1] < ui[name][3] <= d
+                           for name in ('new_tab', 'run', 'append', 'history', 'settings'))
+            wait(actions_fit, 'rounded floating controls contain every action')
+            screenshot('single-terminal-glass.png')
+            index = len(records())
+            click('terminal', .3, .3)
+            click('new_tab')
+            wait(lambda: len(ui_state().get('tabs', [])) == 2 and 'tab_strip' in ui_state().get('ui', {}), 'multiple terminals reveal tab strip')
+            wait(lambda: ui_state().get('pane_transition') == 1, 'new terminal transition settles')
+            assert any(0 < r.get('pane_transition', 1) < 1 for r in records()[index:] if 'ui' in r)
+            wait(actions_fit, 'floating actions remain separate from tabs')
+            screenshot('multiple-terminal-glass.png')
+            index = len(records())
+            before = ui_state()['ui']['terminal']
+            click('tab_0')
+            wait(lambda: ui_state()['active_tab'] == 0 and ui_state().get('pane_transition') == 1, 'tab switch settles')
+            assert any(0 < r.get('pane_transition', 1) < 1 for r in records()[index:] if 'ui' in r)
+            assert ui_state()['ui']['terminal'] == before, 'tab animations moved the terminal input grid'
+            results['gui_tab_open_and_switch_transitions'] = 'passed'
+            click('tab_1')
+            key('w', ('Control_L', 'Shift_L'))
+            wait(lambda: 'tab_strip' not in ui_state().get('ui', {}), 'tab strip hides after returning to one terminal')
+            results['gui_single_terminal_hides_tab_strip'] = 'passed'
+            results['gui_floating_actions_are_reachable'] = 'passed'
 
         def check_tab_titles():
             first = ui_state()['active_tab']
@@ -510,6 +545,9 @@ def main():
             if args.titles_only:
                 check_tab_titles()
                 return
+            if args.chrome_only:
+                check_chrome()
+                return
             if args.append_only:
                 check_appending()
                 return
@@ -523,6 +561,7 @@ def main():
                 check_pager()
                 return
             if not args.run_input_only:
+                check_chrome()
                 check_terminal_focus()
                 check_tab_titles()
                 check_appending()
@@ -622,7 +661,7 @@ def main():
                 if not bounds:
                     return None
                 cropped = mask.crop(bounds)
-                xs = [bounds[0] + index % cropped.width for index, value in enumerate(cropped.getdata()) if value]
+                xs = [bounds[0] + index % cropped.width for index, value in enumerate(cropped.tobytes()) if value]
                 return sum(xs)/len(xs) if xs else None
             positions=[x for x in map(cursor_x,frames) if x is not None]
             assert len(positions)>=3 and max(positions)-min(positions)>10,positions
@@ -750,7 +789,7 @@ def main():
                     if name not in state.get("ui", {}):
                         return False
                     x1, y1, x2, y2 = state["ui"][name]
-                    if not (0 <= x1 < x2 <= geometry.width / state["scale"] and 0 <= y1 < y2 <= 45):
+                    if not (0 <= x1 < x2 <= geometry.width / state["scale"] and 0 <= y1 < y2 <= 58):
                         return False
                 return True
             wait(header_fits, "single-row tab overflow keeps actions visible")

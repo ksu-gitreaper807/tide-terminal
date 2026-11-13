@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, FontId, Pos2, Rect, RichText, Stroke, Vec2};
+use eframe::egui::{self, Color32, FontId, Rect, RichText, Stroke, Vec2};
 
 pub const BG: Color32 = Color32::from_rgb(20, 22, 26);
 pub const CHROME: Color32 = Color32::from_rgb(25, 28, 33);
@@ -363,11 +363,6 @@ pub fn duration(duration: std::time::Duration) -> String {
     } else {
         format!("{seconds}s")
     }
-}
-
-pub fn separator(ui: &egui::Ui, left: Pos2, right: Pos2) {
-    ui.painter()
-        .line_segment([left, right], Stroke::new(1.0_f32, BORDER));
 }
 
 #[cfg(test)]

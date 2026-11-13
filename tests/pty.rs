@@ -20,7 +20,11 @@ fn command(script: &str, rules: RuleSpec) -> Options {
     o.private = true;
     o
 }
-fn wait(session: &Session, timeout: Duration, predicate: impl Fn(&Event) -> bool) -> Vec<Event> {
+fn wait(
+    session: &Session,
+    timeout: Duration,
+    mut predicate: impl FnMut(&Event) -> bool,
+) -> Vec<Event> {
     let start = Instant::now();
     let mut events = vec![];
     while start.elapsed() < timeout {
@@ -34,6 +38,16 @@ fn wait(session: &Session, timeout: Duration, predicate: impl Fn(&Event) -> bool
     }
     panic!("Timed out waiting for event; received {events:?}");
 }
+fn wait_output(session: &Session, expected: &str) {
+    let mut output = String::new();
+    wait(session, Duration::from_secs(5), |event| {
+        if let Event::Output { text } = event {
+            output.push_str(text);
+        }
+        output.contains(expected)
+    });
+}
+
 fn finish(s: &Session) -> Vec<Event> {
     wait(s, Duration::from_secs(8), |e| {
         matches!(e, Event::Exited { .. })
@@ -136,19 +150,11 @@ fn tty_controls_interrupt_suspend_resume_quit_and_end_input_in_each_shell() {
         wait(&session, Duration::from_secs(5), prompt);
 
         session.write(b"python3 -u -c 'import time; [print(\"JOB_TICK\",flush=True) or time.sleep(.05) for _ in range(600)]'\n".to_vec()).unwrap();
-        wait(
-            &session,
-            Duration::from_secs(5),
-            |event| matches!(event, Event::Output { text } if text.contains("JOB_TICK\r\n")),
-        );
+        wait_output(&session, "JOB_TICK\r\n");
         session.write(vec![26]).unwrap(); // Ctrl+Z: the shell must regain control.
         wait(&session, Duration::from_secs(5), prompt);
         session.write(b"fg\n".to_vec()).unwrap();
-        wait(
-            &session,
-            Duration::from_secs(5),
-            |event| matches!(event, Event::Output { text } if text.contains("JOB_TICK\r\n")),
-        );
+        wait_output(&session, "JOB_TICK\r\n");
         session.write(vec![3]).unwrap(); // Ctrl+C after resuming the job.
         let events = wait(&session, Duration::from_secs(5), prompt);
         assert!(
@@ -159,11 +165,7 @@ fn tty_controls_interrupt_suspend_resume_quit_and_end_input_in_each_shell() {
         );
 
         session.write(b"python3 -u -c 'import sys; print(\"EOF_READY\",flush=True); sys.stdin.read(); print(\"EOF_SEEN\")'\n".to_vec()).unwrap();
-        wait(
-            &session,
-            Duration::from_secs(5),
-            |event| matches!(event, Event::Output { text } if text.contains("EOF_READY\r\n")),
-        );
+        wait_output(&session, "EOF_READY\r\n");
         session.write(vec![4]).unwrap(); // Ctrl+D: EOF, not a process signal.
         let events = wait(&session, Duration::from_secs(5), prompt);
         assert!(
@@ -179,11 +181,7 @@ fn tty_controls_interrupt_suspend_resume_quit_and_end_input_in_each_shell() {
         );
 
         session.write(b"python3 -u -c 'import resource,time; resource.setrlimit(resource.RLIMIT_CORE,(0,0)); print(\"QUIT_READY\",flush=True); time.sleep(30)'\n".to_vec()).unwrap();
-        wait(
-            &session,
-            Duration::from_secs(5),
-            |event| matches!(event, Event::Output { text } if text.contains("QUIT_READY\r\n")),
-        );
+        wait_output(&session, "QUIT_READY\r\n");
         session.write(vec![28]).unwrap(); // Ctrl+backslash: SIGQUIT via the tty.
         let events = wait(&session, Duration::from_secs(5), prompt);
         assert!(
