@@ -1,6 +1,6 @@
 # Tide identity
 
-The terminal chevron and wave combine a command prompt with Tide's name. The wave also echoes the shell's `~` home-directory shorthand. All SVGs are self-contained paths: no embedded bitmaps, font dependencies, scripts, filters or external resources.
+The terminal chevron and wave combine a command prompt with Tide's name. The wave sits in the underscore position of `>_`, with a clear gap between the two glyphs. At the 128-unit source size, the chevron's stroked right edge is 53 and the wave's stroked left edge is 63: a 10-unit gap. The wave's centerline sits at y=87, just below the chevron's lower endpoint at y=86. The favicon uses the same geometry at one-quarter scale. All SVGs are self-contained paths: no embedded bitmaps, font dependencies, scripts, filters or external resources.
 
 | File | Use |
 |---|---|
