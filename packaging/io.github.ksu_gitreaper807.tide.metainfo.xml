@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.ksu_gitreaper807.tide</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Tide Terminal</name>
+  <summary>A terminal with input alerts and command timers</summary>
+  <description>
+    <p>Tide keeps related terminal tasks together with tabs, shared history and Bash, Zsh and Fish integration.</p>
+    <p>Receive alerts when a program needs input, set time or output stop conditions, and reuse captured command output without running the original command again.</p>
+  </description>
+  <developer id="io.github.ksu_gitreaper807"><name>Kushal</name></developer>
+  <url type="homepage">https://github.com/ksu-gitreaper807/tide-terminal</url>
+  <url type="bugtracker">https://github.com/ksu-gitreaper807/tide-terminal/issues</url>
+  <launchable type="desktop-id">tide-terminal.desktop</launchable>
+  <provides><binary>tide-terminal</binary></provides>
+  <categories><category>System</category><category>TerminalEmulator</category></categories>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="0.1.0" date="2026-11-13"/></releases>
+</component>

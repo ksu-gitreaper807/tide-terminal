@@ -337,7 +337,14 @@ fn asset(name: &str) -> Result<PathBuf> {
         std::env::var_os("TIDE_ASSETS_DIR").map(PathBuf::from),
         Some(parent.join("vendor")),
         parent.parent().map(|p| p.join("vendor")),
-        Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("vendor")),
+        parent
+            .parent()
+            .map(|p| p.join("share/tide-terminal/vendor")),
+        if option_env!("TIDE_PACKAGED") == Some("1") {
+            None
+        } else {
+            Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("vendor"))
+        },
     ];
     for root in roots.into_iter().flatten() {
         let p = root.join(name);
@@ -346,7 +353,7 @@ fn asset(name: &str) -> Result<PathBuf> {
         }
     }
     bail!(
-        "Bundled shell suggestions not found. Keep vendor/ beside the app, or disable enhanced suggestions in Settings."
+        "Bundled shell suggestions not found. Reinstall Tide, keep vendor/ beside the app, or disable enhanced suggestions in Settings."
     )
 }
 

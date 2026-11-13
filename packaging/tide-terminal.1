@@ -1,0 +1,71 @@
+.TH TIDE-TERMINAL 1 "November 2026" "Tide Terminal 0.1.0"
+.SH NAME
+tide-terminal \- native terminal with input alerts and command timers
+.SH SYNOPSIS
+.B tide-terminal
+.RI [ gui ] " [options]"
+.br
+.B tide-terminal
+.RB [ --working-directory " directory] [" --hold "] " -e
+.I command " [arguments ...]"
+.br
+.B tide-terminal run
+.RI [ options ] " -- command [arguments ...]"
+.SH DESCRIPTION
+Tide is a GPU-rendered Linux terminal with Bash, Zsh and Fish integration,
+command history, prompt alerts, timers and captured-output follow-ups.
+Without a command it starts the shell selected in its preferences.
+.SH DESKTOP OPTIONS
+.TP
+.BR -e ", " --execute
+Run the remaining arguments directly in the terminal. Arguments are not joined
+or interpreted by a shell. To run shell syntax, use an explicit shell and -c.
+The command's terminal closes on completion; other tabs remain open.
+.TP
+.B --working-directory directory
+Start the terminal in this directory. Invalid directories are rejected.
+.TP
+.B --hold
+Keep an executed command's terminal open after completion.
+.TP
+.B "gui --gpu integrated|discrete|auto|software"
+Override the saved renderer for one launch. Integrated is the default.
+.TP
+.B "gui --shell path"
+Override the saved shell for one launch.
+.TP
+.B "gui --private"
+Disable Tide history for the session.
+.SH TIMERS AND APPENDING
+.B "T_: 'command' : -s 30"
+runs a command with a thirty-second limit. Use -m for minutes and -rex for an
+output regular expression. See tide-terminal timer --help for all conditions.
+.PP
+Inside an integrated Tide shell,
+.B "A_: '| grep READY'"
+processes the last completed command's captured output without rerunning it.
+.B "A_: '>> results.txt'"
+appends captured output to a file. Use 1>> or 2>> to select stdout or stderr
+when separate capture is available.
+.SH FILES
+.TP
+.I ~/.tide.toml
+Preferences: renderer, shell, font, opacity, alerts and privacy.
+.TP
+.I ~/.local/share/tide-terminal/history.sqlite3
+Command history, unless XDG_DATA_HOME selects another data directory.
+.SH ENVIRONMENT
+.B TIDE_CONFIG
+selects an alternate preferences file.
+.SH EXAMPLES
+.nf
+tide-terminal
+tide-terminal --working-directory /tmp
+tide-terminal -e htop
+tide-terminal --hold -e bash -c 'printf "hello\\n"'
+T_: 'sleep 60' : -s 3
+.fi
+.SH SEE ALSO
+.BR bash (1),
+.BR fish (1),
+.BR zsh (1)

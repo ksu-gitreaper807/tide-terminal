@@ -9,4 +9,7 @@ if [[ -n ${TIDE_EXE:-} ]]; then
     exec "$TIDE_EXE" append "$@"
 fi
 TIDE_APPEND_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [[ -x "$TIDE_APPEND_DIR/tide-terminal" ]]; then
+    exec "$TIDE_APPEND_DIR/tide-terminal" append "$@"
+fi
 exec "$TIDE_APPEND_DIR/run.sh" append "$@"

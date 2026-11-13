@@ -5,6 +5,8 @@
 
 **Tide Terminal** is a native Rust terminal for Linux, with Bash, Zsh, and Fish integration, inline suggestions, input alerts, animated cursor movement, and timer/output rules for owned command runs. [SVG logo, app icon and favicon sources](assets/branding/README.md) are included.
 
+**Installable package.** [Build and install the native Arch/CachyOS package](packaging/README.md). It installs `tide-terminal`, `T_:`, `A_:`, desktop integration, a man page and the bundled shell runtime in standard locations. The installed launcher is independent of this checkout. `tide-terminal -e command args...` and `--working-directory` support desktop terminal launches; `--hold` retains a completed command's window. Upgrades keep your `~/.tide.toml` preferences.
+
 The application defaults to a surface-compatible **integrated GPU**, preferring Vulkan. You can explicitly switch using **Settings → Renderer → Save**, then restart, or override one launch:
 
 ```bash
@@ -25,7 +27,7 @@ Run the included Linux build from this directory:
 ./run.sh gui --clean --shell /bin/bash
 ```
 
-`--clean` skips the normal user startup configuration for the selected shell. The application normally loads your startup configuration and then its integration. It does not edit your shell startup files. Keep `vendor/` with the application: Bash suggestions use the bundled ble.sh runtime and Zsh suggestions use zsh-autosuggestions. Fish keeps its native editor. Enhanced suggestions can be disabled in Settings if they conflict with a shell framework.
+`--clean` skips the normal user startup configuration for the selected shell. The application normally loads your startup configuration and then its integration. It does not edit your shell startup files. For a development/portable bundle, keep `vendor/` with the application; the installed package finds it under the install prefix's `share/tide-terminal/`. Bash suggestions use bundled ble.sh and Zsh suggestions use zsh-autosuggestions. Fish keeps its native editor. Enhanced suggestions can be disabled in Settings if they conflict with a shell framework.
 
 **Interface.** A single terminal starts just below the window title bar, with no empty tab row. Opening a second terminal smoothly makes space for the tabs; returning to one reclaims that space. The tab strip supports horizontal overflow and short fades when opening or switching tabs. Switching between existing tabs keeps the terminal input grid fixed. A floating translucent rounded action panel at the top right holds New terminal, Run, Append, History and Settings, with individually rounded buttons. A quiet directory/status strip and separate proportional UI and monospace terminal fonts keep the terminal readable. Run, History, and Settings open as centered dialogs. Active tabs stay visible when the window is resized, and dialog actions remain accessible at the 640×420 minimum size. Appearance changes are immediate; Save changes persists them.
 

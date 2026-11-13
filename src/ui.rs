@@ -19,6 +19,9 @@ use tide_terminal::{
 
 #[derive(Default)]
 pub struct UiOptions {
+    pub working_directory: Option<PathBuf>,
+    pub execute: Vec<String>,
+    pub hold: bool,
     pub gpu: Option<GpuMode>,
     pub shell: Option<String>,
     pub clean: bool,
@@ -30,7 +33,17 @@ pub struct UiOptions {
     pub event_log: Option<PathBuf>,
 }
 
-pub fn launch(options: UiOptions) -> Result<()> {
+pub fn launch(mut options: UiOptions) -> Result<()> {
+    if let Some(path) = &options.working_directory {
+        let path = path
+            .canonicalize()
+            .context("Open terminal working directory")?;
+        anyhow::ensure!(
+            path.is_dir(),
+            "Terminal working directory is not a directory"
+        );
+        options.working_directory = Some(path);
+    }
     let icon = image::load_from_memory_with_format(
         include_bytes!("../assets/branding/window-icon.png"),
         image::ImageFormat::Png,
@@ -209,6 +222,7 @@ struct App {
     qa_rects: std::collections::BTreeMap<String, Rect>,
     last_qa: String,
     gpu_name: String,
+    startup_command: Option<u64>,
 }
 impl App {
     fn new(cc: &eframe::CreationContext<'_>, options: UiOptions) -> Self {
@@ -284,8 +298,22 @@ impl App {
             qa_rects: Default::default(),
             last_qa: String::new(),
             gpu_name,
+            startup_command: None,
         };
-        app.open_shell(&cc.egui_ctx);
+        if app.options.execute.is_empty() {
+            app.open_shell(&cc.egui_ctx);
+        } else {
+            let mut options = app.base_options();
+            options.launch = Launch::Command(app.options.execute.clone());
+            let label = options.label();
+            match Session::spawn(options) {
+                Ok(session) => {
+                    app.startup_command = Some(session.id);
+                    app.push(session, label, &cc.egui_ctx);
+                }
+                Err(error) => app.error = Some(format!("Could not start command: {error:#}")),
+            }
+        }
         app
     }
     fn base_options(&self) -> Options {
@@ -294,6 +322,7 @@ impl App {
             .get(self.active)
             .map(|p| PathBuf::from(&p.session.state.lock().unwrap().cwd))
             .filter(|p| p.is_dir())
+            .or_else(|| self.options.working_directory.clone())
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/tmp")));
         let mut o = Options::shell(&self.config.shell, cwd);
         o.launch = Launch::Shell {
@@ -1953,6 +1982,21 @@ impl eframe::App for App {
             self.request_close(CloseTarget::Window, ctx);
         }
         self.poll();
+        if !self.options.hold
+            && let Some(id) = self.startup_command
+            && self
+                .panes
+                .iter()
+                .any(|pane| pane.session.id == id && !pane.session.state.lock().unwrap().running)
+        {
+            self.startup_command = None;
+            let target = if self.panes.len() == 1 {
+                CloseTarget::Window
+            } else {
+                CloseTarget::Tab(id)
+            };
+            self.request_close(target, ctx);
+        }
         self.poll_followups(ctx);
         if self.options.demo
             && self.started.elapsed() > Duration::from_millis(600)

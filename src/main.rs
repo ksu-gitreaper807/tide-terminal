@@ -10,6 +10,7 @@ use tide_terminal::{
     session::{Event, Launch, Options, Session},
 };
 
+mod terminal_cli;
 mod timer;
 
 #[cfg(feature = "desktop")]
@@ -32,6 +33,15 @@ struct Cli {
 enum Commands {
     /// Open the native terminal window.
     Gui {
+        /// Start in this directory (also supported without the gui subcommand).
+        #[arg(long)]
+        working_directory: Option<PathBuf>,
+        /// Keep a command's terminal open after it exits.
+        #[arg(long)]
+        hold: bool,
+        /// Execute an argv in the window; all remaining arguments belong to it.
+        #[arg(short = 'e', long = "execute", num_args = 1.., trailing_var_arg = true, allow_hyphen_values = true)]
+        execute: Vec<String>,
         /// Renderer override for this launch: integrated (default), discrete, auto or software.
         #[arg(long, value_enum)]
         gpu: Option<config::GpuMode>,
@@ -121,7 +131,11 @@ fn main() {
     }
 }
 fn run() -> Result<()> {
-    match Cli::parse_from(timer::normalize(std::env::args_os().collect())).command {
+    match Cli::parse_from(timer::normalize(terminal_cli::normalize(
+        std::env::args_os().collect(),
+    )))
+    .command
+    {
         Some(Commands::Run {
             timeout,
             idle,
@@ -188,6 +202,9 @@ fn run() -> Result<()> {
             {
                 let mut opts = ui::UiOptions::default();
                 if let Some(Commands::Gui {
+                    working_directory,
+                    hold,
+                    execute,
                     gpu,
                     shell,
                     clean,
@@ -200,6 +217,9 @@ fn run() -> Result<()> {
                 }) = command
                 {
                     opts = ui::UiOptions {
+                        working_directory,
+                        hold,
+                        execute,
                         gpu,
                         shell,
                         clean,

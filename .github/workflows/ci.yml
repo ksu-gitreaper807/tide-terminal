@@ -30,7 +30,7 @@ jobs:
       - name: Install shell and desktop build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libxkbcommon-x11-0 libwayland-dev libx11-dev xvfb xauth mesa-vulkan-drivers python3-xlib python3-pil btop less man-db manpages
+          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libxkbcommon-x11-0 libwayland-dev libx11-dev xvfb xauth mesa-vulkan-drivers python3-xlib python3-pil btop less man-db manpages desktop-file-utils
       - name: Install Rust
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
@@ -66,6 +66,10 @@ jobs:
       - name: GUI integration on explicitly selected software renderer
         run: |
           xvfb-run -a -s '-screen 0 1920x1080x24' /usr/bin/python3 scripts/gui_smoke.py --gpu software --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --output-dir "$PWD/qa-results/gui-software" --btop-binary /usr/bin/btop
+      - name: Relocated package and desktop launch integration
+        run: |
+          bash packaging/stage.sh "$PWD/bin/tide-terminal" "$PWD/.ci-work/relocated package"
+          xvfb-run -a -s '-screen 0 1920x1080x24' /usr/bin/python3 scripts/package_smoke.py --gui --gpu software --prefix "$PWD/.ci-work/relocated package/usr" --work-dir "$PWD/.ci-work" --report "$PWD/qa-results/package.json"
       - name: Record hardware validation boundary
         if: always()
         run: |
