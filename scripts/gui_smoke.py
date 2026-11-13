@@ -308,6 +308,8 @@ def main():
 
         def check_chrome():
             wait(lambda: 'tab_strip' not in ui_state().get('ui', {}), 'single terminal hides tab strip')
+            single = ui_state()['ui']['terminal']
+            assert 0 <= single[1] <= 8, f'single terminal reserves an empty header: {single}'
             def actions_fit():
                 ui = ui_state().get('ui', {})
                 if 'action_panel' not in ui:
@@ -323,6 +325,13 @@ def main():
             click('new_tab')
             wait(lambda: len(ui_state().get('tabs', [])) == 2 and 'tab_strip' in ui_state().get('ui', {}), 'multiple terminals reveal tab strip')
             wait(lambda: ui_state().get('pane_transition') == 1, 'new terminal transition settles')
+            wait(lambda: ui_state()['ui']['terminal'][1] >= single[1] + 47,
+                 'terminal makes room for the tab bar')
+            multiple = ui_state()['ui']['terminal']
+            assert abs(multiple[1] - single[1] - 48) <= 1, (single, multiple)
+            assert any(single[1] + .5 < r['ui']['terminal'][1] < multiple[1] - .5
+                       for r in records()[index:] if 'terminal' in r.get('ui', {})), \
+                'opening tabs did not smoothly expand the top margin'
             assert any(0 < r.get('pane_transition', 1) < 1 for r in records()[index:] if 'ui' in r)
             wait(actions_fit, 'floating actions remain separate from tabs')
             screenshot('multiple-terminal-glass.png')
@@ -334,10 +343,47 @@ def main():
             assert ui_state()['ui']['terminal'] == before, 'tab animations moved the terminal input grid'
             results['gui_tab_open_and_switch_transitions'] = 'passed'
             click('tab_1')
-            key('w', ('Control_L', 'Shift_L'))
+            index = len(records())
+            close_fixture_tab()
             wait(lambda: 'tab_strip' not in ui_state().get('ui', {}), 'tab strip hides after returning to one terminal')
+            wait(lambda: abs(ui_state()['ui']['terminal'][1] - single[1]) <= 1,
+                 'single terminal reclaims the tab bar space')
+            assert any(single[1] + .5 < r['ui']['terminal'][1] < multiple[1] - .5
+                       for r in records()[index:] if 'terminal' in r.get('ui', {})), \
+                'closing the second tab did not smoothly collapse the top margin'
+            screenshot('single-terminal-margin-restored.png')
+            results['gui_terminal_top_margin_tracks_tab_bar'] = 'passed'
             results['gui_single_terminal_hides_tab_strip'] = 'passed'
             results['gui_floating_actions_are_reachable'] = 'passed'
+
+            # A managed run can become the only tab after its source shell closes.
+            # Its Stop button must remain clickable beside the floating controls.
+            index = start_run('sleep 20')
+            click('tab_0')
+            close_fixture_tab()
+            def managed_controls_fit():
+                ui = ui_state().get('ui', {})
+                if 'tab_strip' in ui or 'stop_run' not in ui or 'action_panel' not in ui:
+                    return False
+                stop, actions = ui['stop_run'], ui['action_panel']
+                return stop[2] + 8 <= actions[0] and stop[1] < actions[3]
+            wait(managed_controls_fit, 'single managed terminal keeps Stop beside floating actions')
+            geometry = window.get_geometry()
+            window.configure(width=640, height=420)
+            d.sync()
+            wait(lambda: window.get_geometry().width == 640 and window.get_geometry().height == 420,
+                 'compact single managed terminal')
+            wait(lambda: managed_controls_fit() and actions_fit(), 'compact managed controls remain reachable')
+            screenshot('single-managed-terminal-controls.png')
+            click('stop_run')
+            wait(lambda: event_after(index, lambda e: e['event'] == 'exited'), 'Stop interrupts the single managed run')
+            results['gui_single_managed_terminal_stop_stays_reachable'] = 'passed'
+            close_fixture_tab()
+            window.configure(width=geometry.width, height=geometry.height)
+            d.sync()
+            index = len(records())
+            click('new_tab')
+            wait(lambda: event_after(index, lambda e: e['event'] == 'prompt'), 'fresh single shell after managed layout test')
 
         def activate_terminal_window():
             # A Java application can map/raise a window after its launcher returns.
@@ -946,7 +992,7 @@ def main():
                     if name not in state.get("ui", {}):
                         return False
                     x1, y1, x2, y2 = state["ui"][name]
-                    if not (0 <= x1 < x2 <= geometry.width / state["scale"] and 0 <= y1 < y2 <= 58):
+                    if not (0 <= x1 < x2 <= geometry.width / state["scale"] and 0 <= y1 < y2 <= 48):
                         return False
                 return True
             wait(header_fits, "single-row tab overflow keeps actions visible")

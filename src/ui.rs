@@ -310,6 +310,7 @@ impl App {
         });
         self.active = self.panes.len() - 1;
         self.scroll_active_tab = true;
+        ctx.request_repaint();
     }
     fn open_shell(&mut self, ctx: &egui::Context) {
         let o = self.base_options();
@@ -580,6 +581,7 @@ impl App {
                     }
                     self.active = self.active.min(self.panes.len().saturating_sub(1));
                     self.scroll_active_tab = true;
+                    ctx.request_repaint();
                 }
             }
             CloseTarget::Window => {
@@ -729,165 +731,224 @@ impl App {
             self.config.font_size = (self.config.font_size + 1.).min(32.);
         }
     }
-    fn toolbar(&mut self, ctx: &egui::Context) {
+    fn toolbar(&mut self, ctx: &egui::Context, reveal: f32) {
         let mut close = None;
         let mut new_shell = false;
-        let reveal = ctx.animate_value_with_time(
-            egui::Id::new("multiple_terminal_tabs"),
-            f32::from(self.panes.len() > 1),
-            0.18,
-        );
-        egui::TopBottomPanel::top("session_bar")
-            .show_separator_line(false)
-            .exact_height(58.)
-            .frame(egui::Frame::NONE.fill(Color32::from_rgba_unmultiplied(BG.r(), BG.g(), BG.b(), (self.config.opacity * 255.) as u8))
-                .inner_margin(egui::Margin::symmetric(10, 8)))
-            .show(ctx, |ui| {
-                if self.close_request.is_some() { ui.disable(); }
-                ui.spacing_mut().item_spacing.x = 8.;
-                ui.horizontal(|ui| {
-                    let tab_width = (ui.available_width() - 292.).max(100.);
+        if reveal > 0.001 {
+            // Reserve only the space the revealed tabs need. The action panel
+            // floats independently so one terminal can use the top of the window.
+            egui::TopBottomPanel::top("session_bar")
+                .show_separator_line(false)
+                .exact_height(48. * reveal)
+                .frame(egui::Frame::NONE.fill(Color32::from_rgba_unmultiplied(
+                    BG.r(),
+                    BG.g(),
+                    BG.b(),
+                    (self.config.opacity * 255.) as u8,
+                )))
+                .show(ctx, |_| {});
+            egui::Area::new("terminal_tabs".into())
+                .anchor(Align2::LEFT_TOP, Vec2::new(10., 6.))
+                .order(egui::Order::Middle)
+                .movable(false)
+                .fade_in(false)
+                .show(ctx, |ui| {
+                    if self.close_request.is_some() {
+                        ui.disable();
+                    }
+                    let mut clip = ctx.screen_rect();
+                    clip.max.y = clip.top() + 48. * reveal;
+                    ui.set_clip_rect(clip);
+                    ui.spacing_mut().item_spacing.x = 8.;
+                    let tab_width = (ctx.screen_rect().width() - 312.).max(100.);
+                    ui.set_width(tab_width);
                     if (self.tab_view_width - tab_width).abs() > 1. {
                         self.scroll_active_tab = true;
                         self.tab_view_width = tab_width;
                     }
-                    ui.allocate_ui_with_layout(Vec2::new(tab_width, 40.), egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                        ui.set_min_size(Vec2::new(tab_width, 40.));
-                        if reveal <= 0.001 { return; }
-                        self.qa_rects.insert("tab_strip".into(), ui.max_rect());
-                        egui::ScrollArea::horizontal().id_salt("session_tabs")
-                            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                            .auto_shrink([false, false]).show(ui, |ui| {
-                            ui.spacing_mut().item_spacing.x = 4.;
-                            ui.horizontal(|ui| {
-                                for (i, pane) in self.panes.iter().enumerate() {
-                                    let opening = ctx.animate_value_with_time(egui::Id::new(("tab_open", pane.session.id)), 1., 0.18);
-                                    let selected = ctx.animate_value_with_time(egui::Id::new(("tab_selected", pane.session.id)), f32::from(i == self.active), 0.16);
-                                    ui.scope(|ui| {
-                                        ui.multiply_opacity(reveal * (0.74 + 0.26 * selected) * (0.45 + 0.55 * opening));
-
-                                    let state = pane.session.state.lock().unwrap();
-                                    let active = i == self.active;
-                                    let (rect, response) = ui.allocate_exact_size(
-                                        Vec2::new(142., 30.),
-                                        Sense::click(),
-                                    );
-                                    response.widget_info(|| {
-                                        egui::WidgetInfo::selected(
-                                            egui::WidgetType::SelectableLabel,
-                                            ui.is_enabled(),
-                                            active,
-                                            &pane.label,
-                                        )
-                                    });
-                                            let close_rect = Rect::from_center_size(
-                                                Pos2::new(rect.right() - 15., rect.center().y),
-                                                Vec2::splat(22.),
+                    ui.allocate_ui_with_layout(
+                        Vec2::new(tab_width, 40.),
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            ui.set_min_size(Vec2::new(tab_width, 40.));
+                            self.qa_rects.insert("tab_strip".into(), ui.max_rect());
+                            egui::ScrollArea::horizontal()
+                                .id_salt("session_tabs")
+                                .scroll_bar_visibility(
+                                    egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
+                                )
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| {
+                                    ui.spacing_mut().item_spacing.x = 4.;
+                                    ui.horizontal(|ui| {
+                                        for (i, pane) in self.panes.iter().enumerate() {
+                                            let opening = ctx.animate_value_with_time(
+                                                egui::Id::new(("tab_open", pane.session.id)),
+                                                1.,
+                                                0.18,
                                             );
-                                            let close_response = ui
-                                                .interact(
-                                                    close_rect,
-                                                    ui.id().with(("close_tab", i)),
+                                            let selected = ctx.animate_value_with_time(
+                                                egui::Id::new(("tab_selected", pane.session.id)),
+                                                f32::from(i == self.active),
+                                                0.16,
+                                            );
+                                            ui.scope(|ui| {
+                                                ui.multiply_opacity(
+                                                    reveal
+                                                        * (0.74 + 0.26 * selected)
+                                                        * (0.45 + 0.55 * opening),
+                                                );
+
+                                                let state = pane.session.state.lock().unwrap();
+                                                let active = i == self.active;
+                                                let (rect, response) = ui.allocate_exact_size(
+                                                    Vec2::new(142., 30.),
                                                     Sense::click(),
-                                                )
-                                                .on_hover_text("Close terminal · Ctrl+Shift+W");
-                                            if selected > 0.
-                                                || response.hovered()
-                                                || close_response.hovered()
-                                            {
-                                                ui.painter().rect_filled(
-                                                    rect,
-                                                    5.,
-                                                    if selected > 0. {
-                                                        Color32::from_rgba_unmultiplied(43, 48, 56, (255. * selected) as u8)
-                                                    } else {
-                                                        Color32::from_rgb(34, 38, 45)
-                                                    },
                                                 );
-                                            }
-                                            if selected > 0. {
-                                                ui.painter().line_segment(
-                                                    [
-                                                        rect.left_bottom() + Vec2::new(9., -1.),
-                                                        rect.right_bottom() + Vec2::new(-9., -1.),
-                                                    ],
-                                                    Stroke::new(1.5_f32, ACCENT.gamma_multiply(selected)),
+                                                response.widget_info(|| {
+                                                    egui::WidgetInfo::selected(
+                                                        egui::WidgetType::SelectableLabel,
+                                                        ui.is_enabled(),
+                                                        active,
+                                                        &pane.label,
+                                                    )
+                                                });
+                                                let close_rect = Rect::from_center_size(
+                                                    Pos2::new(rect.right() - 15., rect.center().y),
+                                                    Vec2::splat(22.),
                                                 );
-                                            }
-                                            if response.has_focus() {
-                                                ui.painter().rect_stroke(
-                                                    rect.shrink(1.),
-                                                    5.,
-                                                    Stroke::new(1.0_f32, ACCENT),
-                                                    egui::StrokeKind::Inside,
+                                                let close_response = ui
+                                                    .interact(
+                                                        close_rect,
+                                                        ui.id().with(("close_tab", i)),
+                                                        Sense::click(),
+                                                    )
+                                                    .on_hover_text("Close terminal · Ctrl+Shift+W");
+                                                if selected > 0.
+                                                    || response.hovered()
+                                                    || close_response.hovered()
+                                                {
+                                                    ui.painter().rect_filled(
+                                                        rect,
+                                                        5.,
+                                                        if selected > 0. {
+                                                            Color32::from_rgba_unmultiplied(
+                                                                43,
+                                                                48,
+                                                                56,
+                                                                (255. * selected) as u8,
+                                                            )
+                                                        } else {
+                                                            Color32::from_rgb(34, 38, 45)
+                                                        },
+                                                    );
+                                                }
+                                                if selected > 0. {
+                                                    ui.painter().line_segment(
+                                                        [
+                                                            rect.left_bottom() + Vec2::new(9., -1.),
+                                                            rect.right_bottom()
+                                                                + Vec2::new(-9., -1.),
+                                                        ],
+                                                        Stroke::new(
+                                                            1.5_f32,
+                                                            ACCENT.gamma_multiply(selected),
+                                                        ),
+                                                    );
+                                                }
+                                                if response.has_focus() {
+                                                    ui.painter().rect_stroke(
+                                                        rect.shrink(1.),
+                                                        5.,
+                                                        Stroke::new(1.0_f32, ACCENT),
+                                                        egui::StrokeKind::Inside,
+                                                    );
+                                                }
+                                                let icon_rect = Rect::from_center_size(
+                                                    Pos2::new(rect.left() + 16., rect.center().y),
+                                                    Vec2::splat(16.),
                                                 );
-                                            }
-                                            let icon_rect = Rect::from_center_size(
-                                                Pos2::new(rect.left() + 16., rect.center().y),
-                                                Vec2::splat(16.),
-                                            );
-                                            if state.attention.is_some() {
-                                                ui.painter().circle_filled(
-                                                    icon_rect.center(),
-                                                    3.,
-                                                    WARNING,
+                                                if state.attention.is_some() {
+                                                    ui.painter().circle_filled(
+                                                        icon_rect.center(),
+                                                        3.,
+                                                        WARNING,
+                                                    );
+                                                } else {
+                                                    theme::icon(
+                                                        ui,
+                                                        icon_rect,
+                                                        Icon::Terminal,
+                                                        if active { INK } else { MUTED },
+                                                    );
+                                                }
+                                                let text_color = if active { INK } else { MUTED };
+                                                let text_left = rect.left() + 31.;
+                                                let title = ui.fonts(|fonts| {
+                                                    fonts.layout_job(tab_title_job(
+                                                        &pane.label,
+                                                        (close_rect.left() - text_left - 4.)
+                                                            .max(1.),
+                                                        text_color,
+                                                    ))
+                                                });
+                                                ui.painter().galley(
+                                                    Pos2::new(
+                                                        text_left,
+                                                        rect.center().y - title.size().y / 2.,
+                                                    ),
+                                                    title,
+                                                    text_color,
                                                 );
-                                            } else {
-                                                theme::icon(
-                                                    ui,
-                                                    icon_rect,
-                                                    Icon::Terminal,
-                                                    if active { INK } else { MUTED },
-                                                );
-                                            }
-                                            let text_color = if active { INK } else { MUTED };
-                                            let text_left = rect.left() + 31.;
-                                            let title = ui.fonts(|fonts| fonts.layout_job(tab_title_job(
-                                                &pane.label, (close_rect.left() - text_left - 4.).max(1.), text_color,
-                                            )));
-                                            ui.painter().galley(
-                                                Pos2::new(text_left, rect.center().y - title.size().y / 2.),
-                                                title, text_color,
-                                            );
-                                            if selected > 0.
-                                                || response.hovered()
-                                                || close_response.hovered()
-                                            {
-                                                theme::icon(
-                                                    ui,
-                                                    close_rect,
-                                                    Icon::Close,
-                                                    if close_response.hovered() {
-                                                        INK
-                                                    } else {
-                                                        MUTED
-                                                    },
-                                                );
-                                            }
-                                            self.qa_rects.insert(format!("tab_{i}"), rect);
-                                            self.qa_rects
-                                                .insert(format!("tab_close_{i}"), close_rect);
-                                            if close_response.clicked() {
-                                                close = Some(i);
-                                            } else if response.clicked() {
-                                                self.active = i;
-                                                self.scroll_active_tab = true;
-                                            }
-                                            if self.scroll_active_tab && active {
-                                                response.scroll_to_me(Some(egui::Align::Center));
-                                                self.scroll_active_tab = false;
-                                            }
-                                            response.on_hover_text(format!(
-                                                "{}\n{}",
-                                                pane.label,
-                                                theme::short_path(&state.cwd)
-                                            ));
-
+                                                if selected > 0.
+                                                    || response.hovered()
+                                                    || close_response.hovered()
+                                                {
+                                                    theme::icon(
+                                                        ui,
+                                                        close_rect,
+                                                        Icon::Close,
+                                                        if close_response.hovered() {
+                                                            INK
+                                                        } else {
+                                                            MUTED
+                                                        },
+                                                    );
+                                                }
+                                                self.qa_rects.insert(format!("tab_{i}"), rect);
+                                                self.qa_rects
+                                                    .insert(format!("tab_close_{i}"), close_rect);
+                                                if close_response.clicked() {
+                                                    close = Some(i);
+                                                } else if response.clicked() {
+                                                    self.active = i;
+                                                    self.scroll_active_tab = true;
+                                                }
+                                                if self.scroll_active_tab && active {
+                                                    response
+                                                        .scroll_to_me(Some(egui::Align::Center));
+                                                    self.scroll_active_tab = false;
+                                                }
+                                                response.on_hover_text(format!(
+                                                    "{}\n{}",
+                                                    pane.label,
+                                                    theme::short_path(&state.cwd)
+                                                ));
+                                            });
+                                        }
                                     });
-                                }
-                            });
-                        });
-                    });
+                                });
+                        },
+                    );
+                });
+        }
+        egui::Area::new("terminal_actions".into())
+            .anchor(Align2::RIGHT_TOP, Vec2::new(-10., 6.))
+            .order(egui::Order::Middle)
+            .movable(false)
+            .fade_in(false)
+            .show(ctx, |ui| {
+                    if self.close_request.is_some() { ui.disable(); }
                     let panel = egui::Frame::NONE
                         .fill(Color32::from_rgba_unmultiplied(35, 41, 50, 218))
                         .stroke(Stroke::new(1_f32, Color32::from_white_alpha(24)))
@@ -918,7 +979,6 @@ impl App {
                             });
                         });
                     self.qa_rects.insert("action_panel".into(), panel.response.rect);
-                });
             });
         if let Some(index) = close {
             self.request_close(CloseTarget::Tab(self.panes[index].session.id), ctx);
@@ -1428,11 +1488,12 @@ impl App {
         let alpha = (self.config.opacity * 255.) as u8;
         let fill = Color32::from_rgba_unmultiplied(BG.r(), BG.g(), BG.b(), alpha);
         egui::CentralPanel::default()
-            .frame(
-                egui::Frame::NONE
-                    .fill(fill)
-                    .inner_margin(egui::Margin::symmetric(18, 12)),
-            )
+            .frame(egui::Frame::NONE.fill(fill).inner_margin(egui::Margin {
+                left: 18,
+                right: 18,
+                top: 6,
+                bottom: 12,
+            }))
             .show(ctx, |ui| {
                 if self.panes.is_empty() {
                     ui.vertical_centered(|ui| {
@@ -1454,6 +1515,15 @@ impl App {
                             .corner_radius(5)
                             .inner_margin(egui::Margin::symmetric(10, 7))
                             .show(ui, |ui| {
+                                if let Some(actions) = self.qa_rects.get("action_panel")
+                                    && ui.max_rect().top() < actions.bottom()
+                                {
+                                    ui.set_max_width(
+                                        (actions.left() - ui.max_rect().left() - 12.)
+                                            .min(ui.available_width())
+                                            .max(80.),
+                                    );
+                                }
                                 ui.horizontal(|ui| {
                                     let width = (ui.available_width() - 70.).max(80.);
                                     ui.add_sized(
@@ -1468,14 +1538,17 @@ impl App {
                                     )
                                     .on_hover_text(&state.command);
                                     if state.running
-                                        && ui
-                                            .add(
+                                        && track(
+                                            &mut self.qa_rects,
+                                            "stop_run",
+                                            ui.add(
                                                 egui::Button::new(
                                                     RichText::new("Stop").color(DANGER),
                                                 )
                                                 .frame(false),
-                                            )
-                                            .clicked()
+                                            ),
+                                        )
+                                        .clicked()
                                     {
                                         p.session.stop();
                                     }
@@ -1849,6 +1922,20 @@ impl eframe::App for App {
     }
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         self.qa_rects.clear();
+        // Sample targets before actions that can spend time launching or reaping
+        // a shell. Their changes start animating on the next, freshly timed frame.
+        let reveal = ctx.animate_value_with_time(
+            egui::Id::new("multiple_terminal_tabs"),
+            f32::from(self.panes.len() > 1),
+            0.18,
+        );
+        for (index, pane) in self.panes.iter_mut().enumerate() {
+            pane.visibility = ctx.animate_value_with_time(
+                egui::Id::new(("pane_visible", pane.session.id)),
+                f32::from(index == self.active),
+                0.18,
+            );
+        }
         if ctx.input(|i| i.viewport().close_requested()) && !self.close_approved {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.request_close(CloseTarget::Window, ctx);
@@ -1873,14 +1960,7 @@ impl eframe::App for App {
             // retain their own focus and normal Tab navigation while they are open.
             focus_terminal(ctx, terminal_input_id(pane.session.id));
         }
-        self.toolbar(ctx);
-        for (index, pane) in self.panes.iter_mut().enumerate() {
-            pane.visibility = ctx.animate_value_with_time(
-                egui::Id::new(("pane_visible", pane.session.id)),
-                f32::from(index == self.active),
-                0.18,
-            );
-        }
+        self.toolbar(ctx, reveal);
         self.terminal(ctx);
         self.dialogs(ctx);
         // egui keeps modal layers and hit-test data from the previous pass.
