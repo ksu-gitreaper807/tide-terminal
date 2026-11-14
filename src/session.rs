@@ -327,6 +327,7 @@ fn setup_command(options: &Options) -> Result<(CommandBuilder, Option<tempfile::
         cmd.env("HISTFILE", "/dev/null");
         cmd.env("fish_history", "");
     }
+    crate::graphics_startup::restore_child(&mut cmd)?;
     for (k, v) in &options.env {
         cmd.env(k, v);
     }

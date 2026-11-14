@@ -3,6 +3,7 @@ pub mod append;
 pub mod append_cli;
 pub mod capture;
 pub mod config;
+pub mod graphics_startup;
 pub mod history;
 pub mod observer;
 pub mod platform;

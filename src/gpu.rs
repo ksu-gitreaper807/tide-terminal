@@ -38,11 +38,11 @@ pub fn configuration(mode: GpuMode) -> WgpuConfiguration {
         },
         native_adapter_selector: Some(Arc::new(move |adapters, surface| {
             adapters.iter()
-                .filter(|adapter| surface.is_none_or(|surface| adapter.is_surface_supported(surface)))
                 .filter_map(|adapter| {
                     let info = adapter.get_info();
                     rank(mode, info.device_type, info.backend).map(|rank| (rank, adapter))
                 })
+                .filter(|(_, adapter)| surface.is_none_or(|surface| adapter.is_surface_supported(surface)))
                 .min_by_key(|(rank, _)| *rank)
                 .map(|(_, adapter)| adapter.clone())
                 .ok_or_else(|| format!("No surface-compatible {} adapter is available. Check its driver, or explicitly choose gui --gpu auto or --gpu software.", mode.label()))

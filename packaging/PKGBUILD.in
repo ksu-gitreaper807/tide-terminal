@@ -2,7 +2,7 @@
 # Maintainer: Kushal (https://github.com/ksu-gitreaper807)
 pkgname=tide-terminal
 pkgver=0.1.0
-pkgrel=5
+pkgrel=6
 pkgdesc='Native terminal with shell integration, input alerts and command timers'
 arch=('x86_64')
 url='https://github.com/ksu-gitreaper807/tide-terminal'

@@ -1,5 +1,7 @@
 Tide's test library checks terminal semantics and the product features layered on top of them. It is a local automated regression suite, not a claim of complete VT, xterm, Kitty, Unicode or platform conformance.
 
+GPU startup policy tests cover Intel/NVIDIA and AMD/NVIDIA manifest selection, retained OpenGL fallback, explicit GPU/backend/loader overrides, missing drivers and unknown hardware. They also verify that the GUI bootstrap restores original environment bytes for child programs and removes its internal marker. `tests/graphics_startup.rs` runs a real supervised program with synthetic filtered GUI variables and checks restoration of both set and unset values. Hardware startup measurements separately record first-window/prompt time, loaded graphics drivers and device handles; hosted CPU rendering cannot establish dGPU sleep or cold-wake behavior.
+
 The GUI startup check reads the actual X11 `_NET_WM_ICON` property and compares its 128×128 ARGB pixels with Tide's bundled native export. This verifies that the application publishes its own artwork instead of the framework default. The editable SVG logo/favicon sources and export instructions are in [assets/branding](../assets/branding/README.md); desktop entry syntax is checked with `desktop-file-validate packaging/tide-terminal.desktop`. Wayland uses the matching `tide-terminal` desktop ID and installed SVG icon rather than that X11 property.
 
 Run the automated library from the application directory:

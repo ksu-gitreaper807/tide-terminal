@@ -7,7 +7,7 @@
 
 **Installable package.** [Build and install the native Arch/CachyOS package](packaging/README.md). It installs `tide-terminal`, `T_:`, `A_:`, desktop integration, a man page and the bundled shell runtime in standard locations. The installed launcher is independent of this checkout. `tide-terminal -e command args...` and `--working-directory` support desktop terminal launches; `--hold` retains a completed command's window. Upgrades keep your `~/.tide.toml` preferences.
 
-The application defaults to a surface-compatible **integrated GPU**, preferring Vulkan. You can explicitly switch using **Settings → Renderer → Save**, then restart, or override one launch:
+The application defaults to a surface-compatible **integrated GPU**, preferring Vulkan. On Linux Intel/AMD + NVIDIA hybrids with installed Mesa drivers, it limits its own graphics discovery to the matching Mesa Vulkan drivers and Mesa EGL before opening the window. This avoids loading the NVIDIA graphics driver just to reject its adapter. OpenGL remains available as a fallback. Programs launched inside Tide receive your original GPU environment, so their own GPU choices remain independent. Explicit loader/backend environment overrides are respected; unknown hardware retains ordinary discovery and the strict integrated-adapter check. You can explicitly switch using **Settings → Renderer → Save**, then restart, or override one launch:
 
 ```bash
 ./run.sh gui --gpu integrated

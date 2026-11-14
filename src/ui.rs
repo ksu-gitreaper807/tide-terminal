@@ -34,6 +34,8 @@ pub struct UiOptions {
 }
 
 pub fn launch(mut options: UiOptions) -> Result<()> {
+    let gpu_mode = options.gpu.unwrap_or(Config::load()?.gpu);
+    tide_terminal::graphics_startup::prepare(gpu_mode)?;
     if let Some(path) = &options.working_directory {
         let path = path
             .canonicalize()
@@ -68,7 +70,7 @@ pub fn launch(mut options: UiOptions) -> Result<()> {
             })
             .with_title(title),
         renderer: eframe::Renderer::Wgpu,
-        wgpu_options: crate::gpu::configuration(options.gpu.unwrap_or(Config::load()?.gpu)),
+        wgpu_options: crate::gpu::configuration(gpu_mode),
         ..Default::default()
     };
     eframe::run_native(
