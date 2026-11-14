@@ -32,6 +32,8 @@ def main():
     parser.add_argument("--close-only", action="store_true")
     parser.add_argument("--logisim-binary", type=Path)
     parser.add_argument("--append-only", action="store_true")
+    parser.add_argument("--scroll-selection-only", action="store_true")
+    parser.add_argument("--shell", default="/bin/bash", help="Initial shell; use non-Bash shells with focused portable scenarios")
     parser.add_argument("--pager-only", action="store_true")
     parser.add_argument("--btop-binary", type=Path)
     parser.add_argument("--btop-only", action="store_true")
@@ -58,7 +60,7 @@ def main():
             (scratch / "java-home").mkdir()
             (scratch / "java-prefs").mkdir()
             env["JAVA_TOOL_OPTIONS"] = f'-Djava.util.prefs.userRoot="{scratch / "java-prefs"}" -Duser.home="{scratch / "java-home"}"'
-        process = subprocess.Popen([str(args.binary), "gui", "--gpu", args.gpu, "--qa", "--clean", "--shell", "/bin/bash",
+        process = subprocess.Popen([str(args.binary), "gui", "--gpu", args.gpu, "--qa", "--clean", "--shell", args.shell,
                                     "--event-log", str(log), "--screenshot",str(args.output_dir / "canvas.png")], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         d = display.Display()
         root = d.screen().root
@@ -623,6 +625,64 @@ def main():
             wait(lambda: sum(name.startswith("tab_") and name[4:].isdigit() for name in ui_state().get("ui", {})) == tabs_before, "finished pager tab closes")
             results["gui_pager_wheel_scroll_and_quit"] = "passed"
 
+        def check_scrollback_selection():
+            import shlex
+            def command(value):
+                index=len(records());click("terminal",.1,.4);text(value+"\n")
+                wait(lambda:event_after(index,lambda e:e["event"]=="command_ended" and e["code"]==0),"selection fixture command completes")
+            def cell_position(row,col):
+                state=ui_state();left,top,right,bottom=state['ui']['terminal_cell']
+                origin=root.translate_coords(window,0,0)
+                return (origin.x+round((left+(col+.5)*(right-left))*state['scale']),
+                        origin.y+round((top+(row+.5)*(bottom-top))*state['scale']))
+            def drag(a,b):
+                inject(d,X.MotionNotify,x=cell_position(*a)[0],y=cell_position(*a)[1]);d.sync();time.sleep(.08)
+                inject(d,X.ButtonPress,1);d.sync();time.sleep(.1)
+                # A single long motion reproduces a fast real drag: the drag-start
+                # frame sees the endpoint, but selection must retain the press origin.
+                inject(d,X.MotionNotify,x=cell_position(*b)[0],y=cell_position(*b)[1]);d.sync();time.sleep(.15)
+                inject(d,X.ButtonRelease,1);d.sync();time.sleep(.15)
+            def copied(expected,name):
+                key('c',('Control_L','Shift_L'))
+                target=scratch/name
+                text("printf '%s' '");key('v',('Control_L','Shift_L'));text("' > "+shlex.quote(name)+"\n")
+                wait(target.exists,'selected text pasted and saved')
+                assert target.read_text()==expected,(expected,target.read_text())
+
+            command('cd '+shlex.quote(str(scratch)))
+            # Clear the visible screen before saved history: clearing the screen
+            # may itself move previously visible rows into the scrollback.
+            clear="printf '\\033[H\\033[2J\\033[3J"
+            sample='SELECT_THIS_TEXT'
+            for start,end,name in [((0,0),(0,len(sample)-1),'forward-selection'),((0,len(sample)-1),(0,0),'reverse-selection')]:
+                command(clear+sample+"\\r\\n'")
+                assert not ui_state()['terminal_view']['mouse_reporting'],'clean shell unexpectedly captured mouse input'
+                drag(start,end)
+                selection=ui_state()['terminal_view']['selection']
+                assert selection==[list(start),list(end)],selection
+                screenshot(name+'.png');copied(sample,name+'.txt')
+            results['gui_fast_forward_reverse_drag_and_clipboard']='passed'
+
+            fixture=scratch/'scroll-lines.txt'
+            fixture.write_text(''.join(f'SCROLL_LINE_{n:04d}\n' for n in range(120)))
+            command(clear+"'; cat scroll-lines.txt")
+            wait(lambda:ui_state()['terminal_view']['offset']==0,'new output starts at live prompt')
+            x,y=cell_position(10,8);inject(d,X.MotionNotify,x=x,y=y);d.sync()
+            before=native_frame().convert('RGB')
+            for _ in range(3):
+                inject(d,X.ButtonPress,4);inject(d,X.ButtonRelease,4);d.sync();time.sleep(.2)
+            wait(lambda:ui_state()['terminal_view']['offset']>0,'small wheel movements scroll shell history',timeout=4)
+            after=native_frame().convert('RGB')
+            assert ImageChops.difference(before,after).getbbox(),'scrollback did not change rendered content'
+            results['gui_small_wheel_movements_scroll_shell_history']='passed'
+            for _ in range(140):
+                inject(d,X.ButtonPress,4);inject(d,X.ButtonRelease,4);d.sync();time.sleep(.01)
+            time.sleep(.5)
+            sample='SCROLL_LINE_0000';drag((0,0),(0,len(sample)-1))
+            screenshot('scrollback-selection.png')
+            copied(sample,'scrollback-copy.txt')
+            results['gui_select_and_copy_scrollback']='passed'
+
         def check_appending():
             import shlex
             def choose(mode):
@@ -765,6 +825,9 @@ def main():
                                   for r, g, b, a in zip(rgba[0::4], rgba[1::4], rgba[2::4], rgba[3::4])], \
                 'window manager icon differs from the Tide artwork'
             results['gui_native_window_uses_tide_icon'] = 'passed'
+            if args.scroll_selection_only:
+                check_scrollback_selection()
+                return
             if args.focus_only:
                 check_terminal_focus()
                 return
@@ -791,6 +854,7 @@ def main():
                 check_pager()
                 return
             if not args.run_input_only:
+                check_scrollback_selection()
                 check_close_protection()
                 check_chrome()
                 check_terminal_focus()

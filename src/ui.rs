@@ -87,6 +87,7 @@ struct Pane {
     last_size: (u16, u16),
     visibility: f32,
     mouse_down: Option<u8>,
+    scroll_pixels: f32,
 }
 #[derive(Default)]
 struct RunForm {
@@ -348,6 +349,7 @@ impl App {
             last_size: (0, 0),
             visibility: 0.,
             mouse_down: None,
+            scroll_pixels: 0.,
         });
         self.active = self.panes.len() - 1;
         self.scroll_active_tab = true;
@@ -1668,6 +1670,8 @@ impl App {
                     Sense::click_and_drag(),
                 );
                 self.qa_rects.insert("terminal".into(), rect);
+                self.qa_rects
+                    .insert("terminal_cell".into(), Rect::from_min_size(rect.min, cell));
                 let view = p.session.snapshot();
                 let mut painter = ui.painter_at(rect);
                 painter.multiply_opacity(0.65 + 0.35 * p.visibility);
@@ -1703,7 +1707,7 @@ impl App {
                 }
                 if !mouse_mode
                     && response.drag_started()
-                    && let Some(pos) = response.interact_pointer_pos()
+                    && let Some(pos) = ctx.input(|i| i.pointer.press_origin())
                 {
                     let a = point(pos);
                     p.selection = Some((a, a));
@@ -1759,9 +1763,16 @@ impl App {
                         }
                     }
                 }
-                if response.hovered() {
+                if !modal && response.hovered() {
                     let scroll = ctx.input(|i| i.smooth_scroll_delta.y);
-                    if scroll.abs() > 0.1 {
+                    if !mouse_mode && !view.mode.contains(TermMode::ALT_SCREEN) {
+                        let lines = scroll_lines(&mut p.scroll_pixels, scroll, cell.y);
+                        if lines != 0 {
+                            p.session.scroll(lines);
+                            ctx.request_repaint();
+                        }
+                    } else if scroll.abs() > 0.1 {
+                        p.scroll_pixels = 0.;
                         if mouse_mode {
                             if let Some(pos) = response.hover_pos() {
                                 let (row, col) = point(pos);
@@ -1784,9 +1795,6 @@ impl App {
                                     let _ = p.session.write(bytes.clone());
                                 }
                             }
-                        } else {
-                            p.session.scroll((scroll / cell.y).round() as i32);
-                            ctx.request_repaint();
                         }
                     }
                 }
@@ -2061,6 +2069,11 @@ impl eframe::App for App {
             let value = serde_json::json!({"ui":rects,"scale":ctx.pixels_per_point(),
                 "run_command":self.form.command,"run_timeout":self.form.timeout,"active_tab":self.active,
                 "tabs":self.panes.iter().map(|pane| &pane.label).collect::<Vec<_>>(),
+                "terminal_view":self.panes.get(self.active).map(|pane| {
+                    let view=pane.session.snapshot();
+                    serde_json::json!({"offset":view.offset,"rows":view.rows,"cols":view.cols,
+                        "selection":pane.selection,"mouse_reporting":view.mode.intersects(TermMode::MOUSE_MODE)})
+                }),
                 "pane_transition":self.panes.get(self.active).map(|pane| pane.visibility)})
             .to_string();
             if value != self.last_qa {
@@ -2158,6 +2171,15 @@ fn command_label(command: &str) -> Option<String> {
         })
         .collect::<String>();
     (!label.is_empty()).then_some(label)
+}
+
+fn scroll_lines(pending_pixels: &mut f32, delta: f32, line_height: f32) -> i32 {
+    // egui spreads wheel input across frames. Keep sub-cell motion instead of
+    // rounding each frame to zero, including the tiny final smoothing samples.
+    *pending_pixels += delta;
+    let lines = (*pending_pixels / line_height).trunc() as i32;
+    *pending_pixels -= lines as f32 * line_height;
+    lines
 }
 
 fn focus_terminal(ctx: &egui::Context, id: egui::Id) {
@@ -2368,6 +2390,49 @@ pub fn mouse_bytes(button: u8, row: usize, col: usize, pressed: bool, mode: Term
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tiny_scroll_frames_accumulate_into_complete_lines() {
+        let mut pending = 0.;
+        let mut lines = 0;
+        for _ in 0..128 {
+            lines += scroll_lines(&mut pending, 0.125, 16.);
+        }
+        assert_eq!(lines, 1);
+        assert_eq!(pending, 0.);
+        for _ in 0..128 {
+            lines += scroll_lines(&mut pending, -0.125, 16.);
+        }
+        assert_eq!(lines, 0);
+        assert_eq!(pending, 0.);
+    }
+
+    #[test]
+    fn scroll_remainders_cancel_when_direction_changes() {
+        let mut pending = 0.;
+        for delta in [8., 4., -3., -9.] {
+            assert_eq!(scroll_lines(&mut pending, delta, 16.), 0);
+        }
+        assert_eq!(pending, 0.);
+        assert_eq!(scroll_lines(&mut pending, -20., 16.), -1);
+        assert_eq!(pending, -4.);
+        assert_eq!(scroll_lines(&mut pending, 4., 16.), 0);
+        assert_eq!(pending, 0.);
+    }
+
+    #[test]
+    fn scroll_distance_does_not_depend_on_frame_chunking() {
+        let mut pending = 0.;
+        let whole = scroll_lines(&mut pending, 150., 16.);
+        let rest = pending;
+        pending = 0.;
+        let split: i32 = (0..600)
+            .map(|_| scroll_lines(&mut pending, 0.25, 16.))
+            .sum();
+        assert_eq!(whole, 9);
+        assert_eq!(split, whole);
+        assert_eq!(pending, rest);
+    }
 
     #[test]
     fn long_unicode_tab_titles_fit_without_covering_the_close_button() {
