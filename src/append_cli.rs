@@ -5,13 +5,13 @@ use crate::{
 };
 use anyhow::{Context, Result, bail, ensure};
 use std::{
-    io::{Read, Seek, Write},
+    io::{IsTerminal, Read, Seek, Write},
     os::unix::{
         fs::PermissionsExt,
         net::{UnixListener, UnixStream},
         process::CommandExt,
     },
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::{
         Arc, Mutex,
@@ -113,6 +113,38 @@ fn literal_path(text: &str) -> Result<PathBuf> {
 
 pub fn run(fragment: &str) -> Result<i32> {
     let action = Action::parse(fragment)?;
+    // Inside an appended/timed command, a pipe or redirected stdin is the
+    // immediate stage's input. Reading the session snapshot here would silently
+    // process the original recording again. Do not buffer a live pipe or wait for
+    // EOF before starting its consumer.
+    if std::env::var("TIDE_APPEND_NESTED").as_deref() == Ok("1") && !std::io::stdin().is_terminal()
+    {
+        match &action {
+            Action::Pipe(_, Stream::Stderr) | Action::File(_, Stream::Stderr) => {
+                bail!(
+                    "Nested A_: receives pipeline stdin; select stderr with 2| on the outer A_:, or use 2>&1 before the pipe"
+                )
+            }
+            Action::Pipe(command, _) => {
+                let shell = std::env::var("TIDE_SHELL").context("Missing calling Tide shell")?;
+                return execute(&shell, command, &std::env::current_dir()?, None);
+            }
+            Action::File(path, _) => {
+                let mut file = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                    .with_context(|| format!("Could not append to {}", path.display()))?;
+                let count = std::io::copy(&mut std::io::stdin().lock(), &mut file)?;
+                eprintln!(
+                    "A_: appended {count} bytes from pipeline stdin to {}",
+                    path.display()
+                );
+                return Ok(0);
+            }
+            Action::AfterSuccess(_) => {}
+        }
+    }
     let socket = std::env::var_os("TIDE_APPEND_SOCKET").context(
         "A_: needs an integrated Tide shell. Restart Tide after updating and run a command first",
     )?;
@@ -166,19 +198,32 @@ pub fn run(fragment: &str) -> Result<i32> {
             Ok(0)
         }
         Action::Pipe(command, _) | Action::AfterSuccess(command) => {
-            let mut child = Command::new(&source.shell);
-            child.args(["-c", &command]).current_dir(&source.cwd);
-            if pipe {
+            let input = if pipe {
                 // An unlinked regular file gives the entire shell a finite byte stream,
                 // avoids pipe-buffer deadlocks, and needs no feeder process on Ctrl+C.
                 let mut input = tempfile::tempfile()?;
                 input.write_all(output.as_bytes())?;
                 input.rewind()?;
-                child.stdin(Stdio::from(input));
-            }
-            Err(child.exec()).context("Could not execute appended command")
+                Some(input)
+            } else {
+                None
+            };
+            execute(&source.shell, &command, &source.cwd, input)
         }
     }
+}
+
+fn execute(shell: &str, command: &str, cwd: &Path, input: Option<std::fs::File>) -> Result<i32> {
+    let mut child = Command::new(shell);
+    child
+        .args(["-c", &crate::shell_command::with_helpers(shell, command)])
+        .current_dir(cwd)
+        .env("TIDE_SHELL", shell)
+        .env("TIDE_APPEND_NESTED", "1");
+    if let Some(input) = input {
+        child.stdin(Stdio::from(input));
+    }
+    Err(child.exec()).context("Could not execute appended command")
 }
 
 /// Private per-session socket. Captured output stays in memory until explicitly consumed.

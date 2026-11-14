@@ -122,6 +122,145 @@ fn quote(s: &str) -> String {
 }
 
 #[test]
+fn nested_append_uses_pipeline_input_and_keeps_the_original_recording() {
+    for path in SHELLS {
+        let dir = tempfile::tempdir().unwrap();
+        let s = shell(path, dir.path());
+        assert_eq!(run(&s, "printf ORIGINAL; printf x >> source-runs").0, 0);
+        let action = "&& printf 'kushal\\nother\\n' | A_: '| grep k > filtered'";
+        assert_eq!(run(&s, &format!("A_: {}", quote(action))).0, 0, "{path}");
+        assert_eq!(
+            std::fs::read(dir.path().join("filtered")).unwrap(),
+            b"kushal\n",
+            "{path}"
+        );
+        assert_eq!(run(&s, "A_: '>> original'").0, 0);
+        assert_eq!(
+            std::fs::read(dir.path().join("original")).unwrap(),
+            b"ORIGINAL",
+            "{path}"
+        );
+        assert_eq!(std::fs::read(dir.path().join("source-runs")).unwrap(), b"x");
+    }
+}
+
+#[test]
+fn nested_timer_and_append_helpers_use_the_running_binary_in_every_shell() {
+    for path in SHELLS {
+        let dir = tempfile::tempdir().unwrap();
+        let s = shell(path, dir.path());
+        assert_eq!(run(&s, "true").0, 0);
+        let body = "printf 'kushal\\nother\\n' | A_: '| grep k > timed'";
+        // Each shell receives exactly one fragment and the timer receives exactly
+        // one command, with quotes retained for its next shell evaluation.
+        let action = format!("&& T_: {} : -s 2", quote(body));
+        assert_eq!(run(&s, &format!("A_: {}", quote(&action))).0, 0, "{path}");
+        assert_eq!(
+            std::fs::read(dir.path().join("timed")).unwrap(),
+            b"kushal\n",
+            "{path}"
+        );
+    }
+}
+
+#[test]
+fn nested_append_streams_files_failures_and_multiple_stages() {
+    for path in SHELLS {
+        let dir = tempfile::tempdir().unwrap();
+        let s = shell(path, dir.path());
+        assert_eq!(
+            run(
+                &s,
+                "python3 -c 'import os;os.write(1,b\"OUT\\n\");os.write(2,b\"ERR\\n\")'"
+            )
+            .0,
+            0
+        );
+        for (action, status) in [
+            ("1| A_: '>> selected'", 0),
+            ("2| A_: '| cat > errors'", 0),
+            ("&& printf '日本🙂' | A_: '>> \"space file\"'", 0),
+            ("&& printf 'café' | A_: '>> \"space file\"'", 0),
+            (
+                "&& printf 'kushal\\nother\\n' | A_: '| A_: \"| grep k > deep\"'",
+                0,
+            ),
+            ("&& printf value | A_: '| grep absent'", 1),
+            ("&& printf value | A_: '| cat > /dev/null; exit 42'", 42),
+            ("&& printf value | A_: '>> missing/child'", 1),
+            ("&& printf value | A_: '2>> ambiguous'", 1),
+        ] {
+            assert_eq!(
+                run(&s, &format!("A_: {}", quote(action))).0,
+                status,
+                "{path}: {action}"
+            );
+        }
+        for (file, expected) in [
+            ("selected", "OUT\n"),
+            ("errors", "ERR\n"),
+            ("space file", "日本🙂café"),
+            ("deep", "kushal\n"),
+        ] {
+            assert_eq!(
+                std::fs::read_to_string(dir.path().join(file)).unwrap(),
+                expected,
+                "{path}: {file}"
+            );
+        }
+        assert!(!dir.path().join("ambiguous").exists());
+        assert_eq!(run(&s, "A_: '>> unchanged'").0, 0);
+        let original = std::fs::read_to_string(dir.path().join("unchanged")).unwrap();
+        assert!(
+            original.contains("OUT\n") && original.contains("ERR\n"),
+            "{path}: {original:?}"
+        );
+    }
+}
+
+#[test]
+fn nested_timer_enforces_its_deadline_and_preserves_the_source() {
+    for path in SHELLS {
+        let dir = tempfile::tempdir().unwrap();
+        let s = shell(path, dir.path());
+        assert_eq!(run(&s, "printf SOURCE").0, 0);
+        let action = "&& T_: 'sleep 20' : -s 0.15 -grace 100ms";
+        let started = Instant::now();
+        assert_ne!(run(&s, &format!("A_: {}", quote(action))).0, 0, "{path}");
+        assert!(started.elapsed() < Duration::from_secs(4), "{path}");
+        assert_eq!(run(&s, "A_: '>> original'").0, 0);
+        assert_eq!(
+            std::fs::read(dir.path().join("original")).unwrap(),
+            b"SOURCE"
+        );
+    }
+}
+
+#[test]
+fn nested_pipeline_streams_past_the_capture_limit_and_accepts_an_early_consumer() {
+    for path in SHELLS {
+        let dir = tempfile::tempdir().unwrap();
+        let s = shell(path, dir.path());
+        run(&s, "true");
+        let producer = "import os;os.write(1,b'x'*(2*1024*1024))";
+        let action = format!("&& python3 -c {} | A_: '>> large'", quote(producer));
+        assert_eq!(run(&s, &format!("A_: {}", quote(&action))).0, 0, "{path}");
+        assert_eq!(
+            std::fs::read(dir.path().join("large")).unwrap(),
+            vec![b'x'; 2 * 1024 * 1024]
+        );
+        // An unbounded producer must stop on the consumer's closed pipe. Buffering
+        // stdin to EOF before launching head would hang this regression.
+        let producer =
+            "import os\ntry:\n while True: os.write(1,b'x'*32768)\nexcept BrokenPipeError: pass";
+        std::fs::write(dir.path().join("producer.py"), producer).unwrap();
+        let action = "&& python3 producer.py | A_: '| head -c 1 > first'";
+        assert_eq!(run(&s, &format!("A_: {}", quote(action))).0, 0, "{path}");
+        assert_eq!(std::fs::read(dir.path().join("first")).unwrap(), b"x");
+    }
+}
+
+#[test]
 fn syntax_accepts_pipe_success_and_single_literal_append_paths() {
     for (text, expected) in [
         (

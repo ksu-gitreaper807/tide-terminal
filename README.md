@@ -154,6 +154,19 @@ A_: '&& echo "Previous command succeeded"'
 
 The shell function is installed in new Bash, Zsh and Fish tabs. The source is never rerun. Repeated `A_:` actions reuse the same last completed ordinary command; the follow-up's output and confirmations do not replace it. Another ordinary command becomes the new source. CLI actions run in the same tab; a pipe stage uses the source shell and recorded directory, receives finite captured stdin, and returns its own exit status. `&&` skips a failed source and returns that status. `>>` preserves existing bytes, creates absent files, and reports write errors. Quote filenames with spaces inside the action; file paths are literal without shell expansion. `./A_:` also works within an integrated Tide shell.
 
+**Nested helpers.** `A_:` and `T_:` are also available inside appended and timed Bash/Zsh/Fish commands. Keep each fragment or timed command in one quoted argument; alternate outer double quotes and inner single quotes:
+
+```sh
+sleep 5
+A_: "&& whoami | A_: '| grep k'"
+A_: "&& T_: 'whoami' : -s 5"
+A_: "&& printf 'hello\\n' | A_: '>> greetings.txt'"
+```
+
+The names are `A_:` and `T_:`, with the underscore before the colon. Leave a space between a closing quote and timer flags: `'whoami' -s 5`. Single quotes do not nest inside single quotes. Run the source first, then use `A_:` at its next prompt; `sleep 5 && A_: ...` is one unfinished shell command line and does not publish `sleep 5` as a completed source.
+
+A nested `A_:` receiving piped or redirected stdin uses that input for `|` and `>>`, including EOF and the consumer's exit status. For example, the first nested filter above reads `whoami`'s output. It does not read the older `sleep` recording. No capture markers are inserted into the pipeline, and nested actions do not replace the original source. Unpiped actions continue to use the last completed recording. Select original stderr on the outer action (`A_: "2| A_: '| grep error'"`), or merge a new command's stderr with `2>&1` before piping; a nested `2|`/`2>>` is rejected because pipeline stdin has no separate stderr channel. The existing terminal-text and PTY limitations still apply to the original capture and timed runs.
+
 New sessions also retain stdout and stderr independently, each up to 1 MiB of normalized terminal text:
 
 ```sh

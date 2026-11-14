@@ -730,6 +730,21 @@ def main():
             results["gui_cli_append_selects_stderr_file"]="passed"
             screenshot("append-cli-streams.png")
 
+            nested=scratch/"nested-filtered.txt"
+            action="&& printf 'kushal\\nother\\n' | A_: " + shlex.quote("| grep k > " + shlex.quote(str(nested)))
+            prompt_command("A_: " + shlex.quote(action))
+            assert nested.read_text()=="kushal\n"
+            assert counter.read_text()=="x"
+            results["gui_cli_nested_append_uses_immediate_pipeline_input"]="passed"
+
+            timed=scratch/"nested-timed.txt"
+            body="printf 'timed\\n' | A_: " + shlex.quote(">> " + shlex.quote(str(timed)))
+            prompt_command("A_: " + shlex.quote("&& T_: " + shlex.quote(body) + " : -s 2"))
+            assert timed.read_text()=="timed\n"
+            prompt_command("A_: " + shlex.quote("1>> " + shlex.quote(str(stdout_file))))
+            assert stdout_file.read_text()=="Hello\nbeta\nHello\nbeta\n"
+            results["gui_cli_nested_timer_preserves_original_capture"]="passed"
+
         try:
             wait(lambda: event_after(0, lambda e: e["event"] == "prompt"), "initial shell prompt")
             gpu=wait(lambda:next((r['gpu'] for r in records() if 'gpu' in r),None),'actual GPU adapter')

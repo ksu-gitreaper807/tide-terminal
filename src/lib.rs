@@ -9,6 +9,7 @@ pub mod platform;
 mod processes;
 pub mod rules;
 pub mod session;
+mod shell_command;
 pub mod split_capture;
 mod split_pty;
 mod stream_frame;

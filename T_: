@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Standalone entry point. Integrated Tide shells provide the same name as a function.
 set -euo pipefail
+if [[ -n ${TIDE_EXE:-} ]]; then
+    exec "$TIDE_EXE" timer "$@"
+fi
 TIDE_TIMER_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [[ -x "$TIDE_TIMER_DIR/tide-terminal" ]]; then
     exec "$TIDE_TIMER_DIR/tide-terminal" timer "$@"

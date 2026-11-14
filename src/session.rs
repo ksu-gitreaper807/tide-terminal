@@ -198,6 +198,7 @@ fn setup_command(options: &Options) -> Result<(CommandBuilder, Option<tempfile::
             c
         }
         Launch::ShellCommand { shell, command } => {
+            let command = crate::shell_command::with_helpers(shell, command);
             let mut c = if let Some(input) = &options.stdin {
                 let dir = tempfile::Builder::new().prefix("tide-input-").tempdir()?;
                 use std::os::unix::fs::PermissionsExt;
@@ -206,7 +207,7 @@ fn setup_command(options: &Options) -> Result<(CommandBuilder, Option<tempfile::
                 std::fs::write(&path, input)?;
                 let mut c = CommandBuilder::new("/bin/sh");
                 // Positional arguments preserve shell code and paths without interpolating either.
-                c.args(["-c", "exec \"$0\" -c \"$1\" < \"$2\"", shell, command]);
+                c.args(["-c", "exec \"$0\" -c \"$1\" < \"$2\"", shell, &command]);
                 c.arg(path);
                 startup = Some(dir);
                 c
@@ -214,8 +215,10 @@ fn setup_command(options: &Options) -> Result<(CommandBuilder, Option<tempfile::
                 CommandBuilder::new(shell)
             };
             if options.stdin.is_none() {
-                c.args(["-c", command]);
+                c.args(["-c", &command]);
             }
+            c.env("TIDE_SHELL", shell);
+            c.env("TIDE_APPEND_NESTED", "1");
             c
         }
         Launch::Shell { path, clean } => {
