@@ -10,7 +10,7 @@ From a checkout with its source files tracked in Git:
 bash packaging/build-arch.sh /absolute/path/to/package-output
 cd /absolute/path/to/package-output
 sha256sum -c SHA256SUMS
-sudo pacman -U ./tide-terminal-0.1.0-3-x86_64.pkg.tar.zst
+sudo pacman -U ./tide-terminal-0.1.0-4-x86_64.pkg.tar.zst
 tide-terminal
 ```
 
@@ -20,7 +20,7 @@ This is an unsigned local package, not an Arch/AUR publication. Checksums detect
 
 The package installs `/usr/bin/tide-terminal`, `/usr/bin/T_:` and `/usr/bin/A_:`, with its shell runtime in `/usr/share/tide-terminal/vendor/`. Desktop entries, icons, AppStream metadata, manuals, documentation and licenses use their standard `/usr/share` locations. Preferences stay in `~/.tide.toml`; upgrades do not overwrite them. Uninstall with `sudo pacman -R tide-terminal`.
 
-The build sets `TIDE_PACKAGED=1` to omit the development-checkout asset fallback from the release executable. Runtime resources are resolved relative to the installed binary, so the payload can also be relocated as a whole. The source build's plugin tests explicitly use their source fixtures.
+The build sets `TIDE_PACKAGED=1` to omit the development-checkout asset fallback from the release executable. It clears Tide's release artifacts before compiling, retaining dependency caches while preventing normalized archive timestamps from hiding source changes in a reused target directory. Runtime resources are resolved relative to the installed binary, so the payload can also be relocated as a whole. The source build's plugin tests explicitly use their source fixtures.
 
 ## Desktop integration
 

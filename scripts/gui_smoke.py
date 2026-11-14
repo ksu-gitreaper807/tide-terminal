@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the actual X11 window using XTest. Needs python-xlib and Pillow.
+"""Exercise the actual desktop window. Needs python-xlib and Pillow.
 
 Uses an isolated QA window, config, history, and cache. Runtime evidence comes from
 session events and saved configuration, not from the test's intent to click controls.
@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--kwin-input-helper",type=Path)
+    parser.add_argument("--backend", choices=["x11", "wayland"], default="x11")
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--titles-only", action="store_true")
@@ -40,6 +41,9 @@ def main():
     parser.add_argument("--eza-binary", type=Path)
     parser.add_argument("--icons-only", action="store_true")
     args = parser.parse_args()
+    if args.backend == "wayland" and (not args.scroll_selection_only or not args.kwin_input_helper
+                                      or os.environ.get("WAYLAND_DISPLAY") != "tide-qa-test"):
+        parser.error("Wayland selection checks require --scroll-selection-only, --kwin-input-helper and the isolated tide-qa-test compositor")
     if args.btop_only and not args.btop_binary:
         parser.error("--btop-only requires --btop-binary")
     if args.icons_only and not args.eza_binary:
@@ -51,10 +55,12 @@ def main():
         scratch = Path(temporary)
         log = scratch / "events.jsonl"
         env = os.environ.copy()
-        env.pop("WAYLAND_DISPLAY", None)
+        env.pop("DISPLAY" if args.backend == "wayland" else "WAYLAND_DISPLAY", None)
         env.update(TIDE_CONFIG=str(scratch / ".tide.toml"), XDG_CONFIG_HOME=str(scratch / "config"),
                    XDG_DATA_HOME=str(scratch / "data"),
-                   XDG_CACHE_HOME=str(scratch / "cache"))
+                   XDG_CACHE_HOME=str(scratch / "cache"), HISTFILE=str(scratch / "shell-history"))
+        if args.scroll_selection_only:
+            (scratch / ".tide.toml").write_text('font_size = 15.0\nopacity = 0.785\nnotifications = false\n')
         if args.logisim_binary:
             # Keep Java preferences and user-home writes inside the test fixture.
             (scratch / "java-home").mkdir()
@@ -138,7 +144,7 @@ def main():
             d.sync()
             time.sleep(.07)
 
-        def text(value):
+        def text(value, interval=.002):
             for char in value:
                 if char == "\n":
                     key("Return")
@@ -154,16 +160,40 @@ def main():
                 inject(d, X.KeyRelease, code)
                 if shift:
                     inject(d, X.KeyRelease, d.keysym_to_keycode(XK.XK_Shift_L))
-                time.sleep(.002)
+                time.sleep(interval)
             d.sync()
             time.sleep(.1)
 
-        window = wait(find_window, "find QA window")
-        wait(lambda: window.get_attributes().map_state == X.IsViewable, "QA window mapped")
-        time.sleep(.3)
-        window.set_input_focus(X.RevertToParent, X.CurrentTime)
-        d.sync()
-        assert d.get_input_focus().focus.id == window.id
+        def kwin_script(code):
+            # Only used inside the dedicated compositor; match this fixture's PID.
+            script = scratch / "window.js"
+            script.write_text(code)
+            identifier = subprocess.check_output(['qdbus6', 'org.kde.KWin', '/Scripting',
+                'org.kde.kwin.Scripting.loadScript', str(script)], text=True).strip()
+            subprocess.run(['qdbus6', 'org.kde.KWin', '/Scripting/Script' + identifier,
+                'org.kde.kwin.Script.run'], check=True)
+
+        if args.backend == "wayland":
+            wait(lambda: any('ui' in r for r in records()), "native Wayland window renders")
+            # A fixed undecorated fixture has an unambiguous global content origin.
+            # DISPLAY is absent in the app's environment, so it cannot use Xwayland.
+            kwin_script('for (const w of workspace.windowList()) { if (w.pid === ' + str(process.pid)
+                + ') { w.noBorder=true; w.frameGeometry={x:100,y:100,width:1120,height:740}; workspace.activeWindow=w; }}')
+            window = None
+            time.sleep(.5)
+        else:
+            window = wait(find_window, "find QA window")
+            wait(lambda: window.get_attributes().map_state == X.IsViewable, "QA window mapped")
+            time.sleep(.3)
+            window.set_input_focus(X.RevertToParent, X.CurrentTime)
+            d.sync()
+            assert d.get_input_focus().focus.id == window.id
+
+        def content_origin():
+            if args.backend == "wayland":
+                return 100, 100
+            origin = root.translate_coords(window, 0, 0)
+            return origin.x, origin.y
 
         def ui_state():
             return next((r for r in reversed(records()) if "ui" in r), {})
@@ -185,9 +215,10 @@ def main():
             # Clicking an earlier layout can hit a different control.
             state = wait(settled_control, f"settled control {name}")
             x1, y1, x2, y2 = state["ui"][name]
-            origin = root.translate_coords(window, 0, 0)
-            x = origin.x + round((x1 + (x2-x1)*x_fraction)*state["scale"])
-            y = origin.y + round((y1 + (y2-y1)*y_fraction)*state["scale"])
+            origin_x, origin_y = content_origin()
+            pointer_scale = 1 if args.backend == "wayland" else state["scale"]
+            x = origin_x + round((x1 + (x2-x1)*x_fraction)*pointer_scale)
+            y = origin_y + round((y1 + (y2-y1)*y_fraction)*pointer_scale)
             inject(d, X.MotionNotify, x=x, y=y)
             inject(d, X.ButtonPress, 1)
             d.sync()
@@ -627,14 +658,25 @@ def main():
 
         def check_scrollback_selection():
             import shlex
+            def completed(index, accepts):
+                started=wait(lambda:event_after(index,lambda e:e['event']=='command_started' and accepts(e['command'])),
+                             'matching selection fixture command starts')
+                run_id=started['event']['run_id']
+                ended=wait(lambda:event_after(index,lambda e:e['event']=='command_ended' and e['run_id']==run_id and e['code']==0),
+                           'matching selection fixture command completes')
+                end_index=records().index(ended)
+                wait(lambda:event_after(end_index+1,lambda e:e['event']=='prompt'),'selection fixture shell is ready again')
             def command(value):
-                index=len(records());click("terminal",.1,.4);text(value+"\n")
-                wait(lambda:event_after(index,lambda e:e["event"]=="command_ended" and e["code"]==0),"selection fixture command completes")
+                # Pace fixture setup independently of the drag speed under test.
+                # Allow shell suggestion redraws between synthetic key events.
+                index=len(records());click("terminal",.1,.4);text(value+"\n",interval=.015)
+                completed(index,lambda actual:actual==value)
             def cell_position(row,col):
                 state=ui_state();left,top,right,bottom=state['ui']['terminal_cell']
-                origin=root.translate_coords(window,0,0)
-                return (origin.x+round((left+(col+.5)*(right-left))*state['scale']),
-                        origin.y+round((top+(row+.5)*(bottom-top))*state['scale']))
+                origin_x,origin_y=content_origin()
+                pointer_scale=1 if args.backend == "wayland" else state['scale']
+                return (origin_x+round((left+(col+.5)*(right-left))*pointer_scale),
+                        origin_y+round((top+(row+.5)*(bottom-top))*pointer_scale))
             def drag(a,b):
                 inject(d,X.MotionNotify,x=cell_position(*a)[0],y=cell_position(*a)[1]);d.sync();time.sleep(.08)
                 inject(d,X.ButtonPress,1);d.sync();time.sleep(.1)
@@ -643,9 +685,14 @@ def main():
                 inject(d,X.MotionNotify,x=cell_position(*b)[0],y=cell_position(*b)[1]);d.sync();time.sleep(.15)
                 inject(d,X.ButtonRelease,1);d.sync();time.sleep(.15)
             def copied(expected,name):
+                index=len(records())
                 key('c',('Control_L','Shift_L'))
                 target=scratch/name
-                text("printf '%s' '");key('v',('Control_L','Shift_L'));text("' > "+shlex.quote(name)+"\n")
+                text("printf '%s' '",interval=.015);key('v',('Control_L','Shift_L'));text("' > "+shlex.quote(name),interval=.015)
+                # ble.sh's multiline editor uses Enter to insert a newline and
+                # Ctrl+J to submit. Other supported shells accept Ctrl+J too.
+                key('j',('Control_L',)) if '\n' in expected else key('Return')
+                completed(index,lambda actual:actual.startswith("printf '%s' ") and actual.endswith('> '+shlex.quote(name)))
                 wait(target.exists,'selected text pasted and saved')
                 assert target.read_text()==expected,(expected,target.read_text())
 
@@ -659,9 +706,23 @@ def main():
                 assert not ui_state()['terminal_view']['mouse_reporting'],'clean shell unexpectedly captured mouse input'
                 drag(start,end)
                 selection=ui_state()['terminal_view']['selection']
-                assert selection==[list(start),list(end)],selection
+                assert selection==[list(p) for p in sorted((start,end))],selection
                 screenshot(name+'.png');copied(sample,name+'.txt')
             results['gui_fast_forward_reverse_drag_and_clipboard']='passed'
+
+            for name,sgr in [('truecolor','48;2;20;30;40'),('indexed','48;5;24'),('inverse','7')]:
+                command(clear+'\\033['+sgr+'m'+sample+"\\033[0m\\r\\n'")
+                drag((0,0),(0,len(sample)-1))
+                image=native_frame().convert('RGB')
+                left,top,right,bottom=ui_state()['ui']['terminal_cell'];scale=ui_state()['scale']
+                crop=image.crop((round(left*scale),round(top*scale),
+                    round((left+(right-left)*len(sample))*scale),round(bottom*scale)))
+                colors=crop.getcolors(crop.width*crop.height)
+                highlighted=sum(count for count,color in colors if color==(37,65,79))
+                assert highlighted > crop.width*crop.height*.1, (name,'selection highlight hidden',highlighted)
+                image.save(args.output_dir/('selection-'+name+'.png'))
+                copied(sample,'selection-'+name+'.txt')
+            results['gui_selection_visible_over_colored_and_inverse_backgrounds']='passed'
 
             fixture=scratch/'scroll-lines.txt'
             fixture.write_text(''.join(f'SCROLL_LINE_{n:04d}\n' for n in range(120)))
@@ -682,6 +743,67 @@ def main():
             screenshot('scrollback-selection.png')
             copied(sample,'scrollback-copy.txt')
             results['gui_select_and_copy_scrollback']='passed'
+
+            def wheel(button,count):
+                for _ in range(count):
+                    inject(d,X.ButtonPress,button);inject(d,X.ButtonRelease,button);d.sync();time.sleep(.05)
+                time.sleep(.3)
+            def hold_drag(a,b):
+                x,y=cell_position(*a);inject(d,X.MotionNotify,x=x,y=y);d.sync();time.sleep(.08)
+                inject(d,X.ButtonPress,1);d.sync();time.sleep(.1)
+                x,y=cell_position(*b);inject(d,X.MotionNotify,x=x,y=y);d.sync();time.sleep(.15)
+            def release_drag():
+                inject(d,X.ButtonRelease,1);d.sync();time.sleep(.2)
+            def reset_history():
+                command(clear+"'; cat scroll-lines.txt")
+                x,y=cell_position(5,8);inject(d,X.MotionNotify,x=x,y=y);d.sync()
+                wheel(4,140)
+                state=ui_state()['terminal_view']
+                return state['offset'],state['rows']
+
+            for reverse in (False,True):
+                history_size,rows=reset_history()
+                if reverse:
+                    wheel(5,140)
+                    assert ui_state()['terminal_view']['offset']==0
+                    hold_drag((rows-4,len(sample)-1),(2,0))
+                else:
+                    hold_drag((1,0),(rows-3,len(sample)-1))
+                before=ui_state()['terminal_view'];wheel(4 if reverse else 5,8)
+                wait(lambda:ui_state()['terminal_view']['offset']!=before['offset'],'wheel scrolls during held selection')
+                release_drag()
+                state=ui_state()['terminal_view'];selected=state['selection']
+                if reverse:
+                    assert selected[1]==before['selection'][1],(before,state)
+                    assert selected[0][0]<before['selection'][0][0],(before,state)
+                else:
+                    assert selected[0]==before['selection'][0],(before,state)
+                    assert selected[1][0]>before['selection'][1][0],(before,state)
+                first,last=history_size+selected[0][0],history_size+selected[1][0]
+                assert 0<=first<last<120,(first,last)
+                expected='\n'.join(f'SCROLL_LINE_{n:04d}' for n in range(first,last+1))
+                # After release, scrolling must move the highlight with its text,
+                # without selecting a different sliding window of content.
+                wheel(5 if reverse else 4,3)
+                assert ui_state()['terminal_view']['selection']==selected
+                copied(expected,'held-scroll-'+str(reverse)+'.txt')
+            results['gui_wheel_extends_held_selection_and_preserves_released_content']='passed'
+
+            history_size,rows=reset_history()
+            hold_drag((1,0),(rows-2,len(sample)-1))
+            x,y=cell_position(rows-1,len(sample)-1)
+            height=ui_state()['ui']['terminal_cell'][3]-ui_state()['ui']['terminal_cell'][1]
+            inject(d,X.MotionNotify,x=x,y=y+round(height*(1 if args.backend=='wayland' else ui_state()['scale'])*2));d.sync()
+            try:
+                wait(lambda:ui_state()['terminal_view']['offset']<history_size-6,'dragging beyond bottom edge scrolls and extends',timeout=4)
+            finally:
+                release_drag()
+            selected=ui_state()['terminal_view']['selection']
+            assert selected[0]==[1-history_size,0],selected
+            first,last=history_size+selected[0][0],history_size+selected[1][0]
+            assert last-first+1>rows,(first,last,rows)
+            copied('\n'.join(f'SCROLL_LINE_{n:04d}' for n in range(first,last+1)),'edge-scroll.txt')
+            results['gui_drag_beyond_viewport_autoscrolls_selection']='passed'
 
         def check_appending():
             import shlex
@@ -814,6 +936,10 @@ def main():
             results['integrated_gpu_rendering' if args.gpu == 'integrated' else 'explicit_renderer'] = gpu
             # Verify the icon that winit actually publishes to the window manager.
             # This catches falling back to the framework's generic window icon.
+            if args.backend == "wayland":
+                results['native_display_backend'] = 'wayland'
+                check_scrollback_selection()
+                return
             icon = window.get_full_property(d.intern_atom('_NET_WM_ICON'), X.AnyPropertyType)
             assert icon is not None and icon.format == 32, 'native application icon is missing'
             pixels = list(icon.value)
@@ -1150,10 +1276,13 @@ def main():
                 if process.poll() is None:
                     # Request a normal window close so session cleanup runs.
                     from Xlib.protocol import event
-                    close = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
-                                                data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
-                    window.send_event(close, event_mask=0)
-                    d.flush()
+                    if args.backend == "wayland":
+                        kwin_script('for (const w of workspace.windowList()) { if (w.pid === ' + str(process.pid) + ') w.closeWindow(); }')
+                    else:
+                        close = event.ClientMessage(window=window, client_type=d.intern_atom("WM_PROTOCOLS"),
+                                                    data=(32, [d.intern_atom("WM_DELETE_WINDOW"), X.CurrentTime, 0, 0, 0]))
+                        window.send_event(close, event_mask=0)
+                        d.flush()
                     try:
                         deadline = time.monotonic() + 3
                         while process.poll() is None and time.monotonic() < deadline:

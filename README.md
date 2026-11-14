@@ -194,7 +194,7 @@ print("\033]777;tide;input;\a", end="", flush=True)
 
 An alert is dismissed when input resumes, the prompt changes, or the command settles. A new prompt can alert again. Tide does not answer prompts automatically.
 
-**Scroll and copy.** Scroll the wheel or touchpad over the terminal to browse its history. Drag from the first character to the last character to select text, then use Ctrl+Shift+C to copy and Ctrl+Shift+V to paste. In programs that capture the mouse, hold Shift while dragging to select terminal text. Alternate-screen programs such as less receive wheel navigation themselves.
+**Scroll and copy.** Scroll the wheel or touchpad over the terminal to browse its history. Drag from the first character to the last character to select text, then use Ctrl+Shift+C to copy and Ctrl+Shift+V to paste. Keep the mouse button held while scrolling to extend the selection beyond one screen, or drag past the top/bottom edge to scroll automatically. After releasing the button, scrolling keeps the same text selected. In programs that capture the mouse, hold Shift while dragging to select terminal text. Alternate-screen programs such as less receive wheel navigation themselves.
 
 **Local data.** Preferences are stored in `~/.tide.toml` (or the file selected by `TIDE_CONFIG`), and shared command history in `$XDG_DATA_HOME/tide-terminal/history.sqlite3`, using the usual `~/.config` and `~/.local/share` defaults. Leading-space commands are excluded from Tide history. Private sessions skip Tide history and disable the shell history file for app-launched shells. Terminal scrollback stays in memory. Transcript/event recording only occurs when explicitly requested through the testing/debug flags.
 

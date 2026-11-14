@@ -553,8 +553,17 @@ impl Session {
     pub fn scroll(&self, lines: i32) {
         terminal::scroll(&mut self.state.lock().unwrap().terminal, lines);
     }
-    pub fn select(&self, a: (usize, usize), b: (usize, usize)) -> String {
-        terminal::selected(&self.state.lock().unwrap().terminal, a, b)
+    pub fn begin_selection(&self, point: (usize, usize)) {
+        terminal::begin_selection(&mut self.state.lock().unwrap().terminal, point);
+    }
+    pub fn extend_selection(&self, point: (usize, usize)) {
+        terminal::extend_selection(&mut self.state.lock().unwrap().terminal, point);
+    }
+    pub fn clear_selection(&self) {
+        self.state.lock().unwrap().terminal.selection = None;
+    }
+    pub fn selection_text(&self) -> Option<String> {
+        self.state.lock().unwrap().terminal.selection_to_string()
     }
     pub fn is_running(&self) -> bool {
         self.state.lock().unwrap().running

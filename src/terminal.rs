@@ -2,7 +2,8 @@ use alacritty_terminal::{
     Term,
     event::{Event, EventListener},
     grid::{Dimensions, Scroll},
-    index::{Column, Line, Point},
+    index::{Column, Line, Point, Side},
+    selection::{Selection, SelectionRange, SelectionType},
     term::{self, TermMode, cell::Flags},
     vte::ansi::{Color, NamedColor},
 };
@@ -68,6 +69,7 @@ pub struct View {
     pub cursor_shape: alacritty_terminal::vte::ansi::CursorShape,
     pub mode: TermMode,
     pub offset: usize,
+    pub selection: Option<SelectionRange>,
 }
 
 pub const PALETTE: [[u8; 3]; 16] = [
@@ -181,10 +183,34 @@ pub fn snapshot(term: &Core) -> View {
         cursor_shape: term.cursor_style().shape,
         mode: *term.mode(),
         offset,
+        selection: term.selection.as_ref().and_then(|s| s.to_range(term)),
     }
 }
 pub fn scroll(term: &mut Core, delta: i32) {
     term.scroll_display(Scroll::Delta(delta));
+}
+fn selection_point(term: &Core, visible: (usize, usize)) -> Point {
+    Point::new(
+        Line(visible.0.min(term.screen_lines() - 1) as i32 - term.grid().display_offset() as i32),
+        Column(visible.1.min(term.columns() - 1)),
+    )
+}
+/// Anchor to the grid's retained content rather than to a viewport row.
+pub fn begin_selection(term: &mut Core, visible: (usize, usize)) {
+    let mut selection = Selection::new(
+        SelectionType::Simple,
+        selection_point(term, visible),
+        Side::Left,
+    );
+    selection.include_all();
+    term.selection = Some(selection);
+}
+pub fn extend_selection(term: &mut Core, visible: (usize, usize)) {
+    let point = selection_point(term, visible);
+    if let Some(selection) = &mut term.selection {
+        selection.update(point, Side::Left);
+        selection.include_all();
+    }
 }
 pub fn selected(term: &Core, start: (usize, usize), end: (usize, usize)) -> String {
     let offset = term.grid().display_offset() as i32;

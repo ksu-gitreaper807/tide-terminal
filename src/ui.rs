@@ -83,7 +83,7 @@ struct Pane {
     session: Session,
     label: String,
     cursor: Option<Pos2>,
-    selection: Option<((usize, usize), (usize, usize))>,
+    selection_scroll_at: Instant,
     last_size: (u16, u16),
     visibility: f32,
     mouse_down: Option<u8>,
@@ -345,7 +345,7 @@ impl App {
             session,
             label,
             cursor: None,
-            selection: None,
+            selection_scroll_at: Instant::now(),
             last_size: (0, 0),
             visibility: 0.,
             mouse_down: None,
@@ -1672,7 +1672,7 @@ impl App {
                 self.qa_rects.insert("terminal".into(), rect);
                 self.qa_rects
                     .insert("terminal_cell".into(), Rect::from_min_size(rect.min, cell));
-                let view = p.session.snapshot();
+                let mode = *p.session.state.lock().unwrap().terminal.mode();
                 let mut painter = ui.painter_at(rect);
                 painter.multiply_opacity(0.65 + 0.35 * p.visibility);
                 let point = |pos: Pos2| -> (usize, usize) {
@@ -1695,29 +1695,23 @@ impl App {
                 if !modal && !ctx.memory(|memory| memory.any_popup_open()) {
                     focus_terminal(ctx, response.id);
                 }
-                let mouse_mode = view.mode.intersects(TermMode::MOUSE_MODE)
+                let mouse_mode = mode.intersects(TermMode::MOUSE_MODE)
                     && !ctx.input(|i| i.modifiers.shift)
                     && !modal;
                 if response.clicked() {
                     if !modal {
                         focus_terminal(ctx, response.id);
                     }
-                    p.selection = None;
+                    p.session.clear_selection();
                     self.last_interaction = Instant::now();
                 }
-                if !mouse_mode
+                if !modal
+                    && !mouse_mode
                     && response.drag_started()
                     && let Some(pos) = ctx.input(|i| i.pointer.press_origin())
                 {
                     let a = point(pos);
-                    p.selection = Some((a, a));
-                }
-                if !mouse_mode
-                    && response.dragged()
-                    && let (Some((a, _)), Some(pos)) =
-                        (p.selection, response.interact_pointer_pos())
-                {
-                    p.selection = Some((a, point(pos)));
+                    p.session.begin_selection(a);
                 }
                 if mouse_mode {
                     for event in ctx.input(|i| i.events.clone()) {
@@ -1739,15 +1733,13 @@ impl App {
                                     + 4 * u8::from(modifiers.shift)
                                     + 8 * u8::from(modifiers.alt)
                                     + 16 * u8::from(modifiers.ctrl);
-                                let _ = p
-                                    .session
-                                    .write(mouse_bytes(bits, row, col, pressed, view.mode));
+                                let _ = p.session.write(mouse_bytes(bits, row, col, pressed, mode));
                                 p.mouse_down = if pressed { Some(button) } else { None };
                             }
                             egui::Event::PointerMoved(pos)
                                 if rect.contains(pos)
-                                    && (view.mode.contains(TermMode::MOUSE_MOTION)
-                                        || (view.mode.contains(TermMode::MOUSE_DRAG)
+                                    && (mode.contains(TermMode::MOUSE_MOTION)
+                                        || (mode.contains(TermMode::MOUSE_DRAG)
                                             && p.mouse_down.is_some())) =>
                             {
                                 let (row, col) = point(pos);
@@ -1756,7 +1748,7 @@ impl App {
                                     row,
                                     col,
                                     true,
-                                    view.mode,
+                                    mode,
                                 ));
                             }
                             _ => {}
@@ -1765,7 +1757,7 @@ impl App {
                 }
                 if !modal && response.hovered() {
                     let scroll = ctx.input(|i| i.smooth_scroll_delta.y);
-                    if !mouse_mode && !view.mode.contains(TermMode::ALT_SCREEN) {
+                    if !mouse_mode && !mode.contains(TermMode::ALT_SCREEN) {
                         let lines = scroll_lines(&mut p.scroll_pixels, scroll, cell.y);
                         if lines != 0 {
                             p.session.scroll(lines);
@@ -1781,16 +1773,16 @@ impl App {
                                     row,
                                     col,
                                     true,
-                                    view.mode,
+                                    mode,
                                 ));
                             }
-                        } else if view.mode.contains(TermMode::ALT_SCREEN) {
+                        } else if mode.contains(TermMode::ALT_SCREEN) {
                             let key = if scroll > 0. {
                                 Key::ArrowUp
                             } else {
                                 Key::ArrowDown
                             };
-                            if let Some(bytes) = key_bytes(key, egui::Modifiers::NONE, view.mode) {
+                            if let Some(bytes) = key_bytes(key, egui::Modifiers::NONE, mode) {
                                 for _ in 0..((scroll.abs() / cell.y).ceil() as usize).min(10) {
                                     let _ = p.session.write(bytes.clone());
                                 }
@@ -1798,11 +1790,69 @@ impl App {
                         }
                     }
                 }
-                if let Some((a, b)) = p.selection {
-                    let (a, b) = if a <= b { (a, b) } else { (b, a) };
-                    for row in a.0..=b.0 {
-                        let start = if row == a.0 { a.1 } else { 0 };
-                        let end = if row == b.0 { b.1 + 1 } else { cols as usize };
+                if !modal
+                    && !mouse_mode
+                    && (response.dragged() || response.drag_stopped())
+                    && let Some(pos) = response.interact_pointer_pos()
+                {
+                    // Continue selecting beyond the viewport, including when the
+                    // pointer stays still while the wheel or edge scrolls history.
+                    let direction = if pos.y < rect.top() {
+                        1
+                    } else if pos.y > rect.bottom() {
+                        -1
+                    } else {
+                        0
+                    };
+                    if response.dragged() && direction != 0 && !mode.contains(TermMode::ALT_SCREEN)
+                    {
+                        if p.selection_scroll_at.elapsed() >= Duration::from_millis(40) {
+                            p.session.scroll(direction * 3);
+                            p.selection_scroll_at = Instant::now();
+                        }
+                        ctx.request_repaint_after(Duration::from_millis(40));
+                    } else {
+                        p.selection_scroll_at = Instant::now();
+                    }
+                    p.session.extend_selection(point(pos));
+                }
+                // Input may have changed both the display offset and selection.
+                let view = p.session.snapshot();
+                // Cell backgrounds must be below the selection, including SGR
+                // backgrounds and inverse video used by prompts and full-screen apps.
+                for c in &view.cells {
+                    if let Some(bg) = c.bg {
+                        let pos =
+                            rect.min + Vec2::new(c.col as f32 * cell.x, c.row as f32 * cell.y);
+                        let width = cell.x * if c.wide { 2. } else { 1. };
+                        painter.rect_filled(
+                            Rect::from_min_size(pos, Vec2::new(width, cell.y)),
+                            0.,
+                            Color32::from_rgb(bg[0], bg[1], bg[2]),
+                        );
+                    }
+                }
+                if let Some(selection) = view.selection {
+                    for row in 0..rows as usize {
+                        let line = alacritty_terminal::index::Line(row as i32 - view.offset as i32);
+                        if line < selection.start.line || line > selection.end.line {
+                            continue;
+                        }
+                        let start = if line == selection.start.line {
+                            selection.start.column.0
+                        } else {
+                            0
+                        }
+                        .min(cols as usize);
+                        let end = if line == selection.end.line {
+                            selection.end.column.0 + 1
+                        } else {
+                            cols as usize
+                        }
+                        .min(cols as usize);
+                        if start >= end {
+                            continue;
+                        }
                         painter.rect_filled(
                             Rect::from_min_size(
                                 rect.min + Vec2::new(start as f32 * cell.x, row as f32 * cell.y),
@@ -1816,13 +1866,6 @@ impl App {
                 for c in &view.cells {
                     let pos = rect.min + Vec2::new(c.col as f32 * cell.x, c.row as f32 * cell.y);
                     let width = cell.x * if c.wide { 2. } else { 1. };
-                    if let Some(bg) = c.bg {
-                        painter.rect_filled(
-                            Rect::from_min_size(pos, Vec2::new(width, cell.y)),
-                            0.,
-                            Color32::from_rgb(bg[0], bg[1], bg[2]),
-                        );
-                    }
                     let color = Color32::from_rgb(c.fg[0], c.fg[1], c.fg[2]);
                     if let Some(icon_font) =
                         theme::terminal_icon_font(ctx, &c.text, Vec2::new(width, cell.y))
@@ -1905,8 +1948,8 @@ impl App {
                     for event in events {
                         match event {
                             egui::Event::Copy => {
-                                if let Some((a, b)) = p.selection {
-                                    ctx.copy_text(p.session.select(a, b));
+                                if let Some(text) = p.session.selection_text() {
+                                    ctx.copy_text(text);
                                 }
                             }
                             egui::Event::Paste(text) => {
@@ -1924,8 +1967,8 @@ impl App {
                                 ..
                             } => {
                                 if modifiers.ctrl && modifiers.shift && key == Key::C {
-                                    if let Some((a, b)) = p.selection {
-                                        ctx.copy_text(p.session.select(a, b));
+                                    if let Some(text) = p.session.selection_text() {
+                                        ctx.copy_text(text);
                                     }
                                     continue;
                                 }
@@ -2072,7 +2115,8 @@ impl eframe::App for App {
                 "terminal_view":self.panes.get(self.active).map(|pane| {
                     let view=pane.session.snapshot();
                     serde_json::json!({"offset":view.offset,"rows":view.rows,"cols":view.cols,
-                        "selection":pane.selection,"mouse_reporting":view.mode.intersects(TermMode::MOUSE_MODE)})
+                        "selection":view.selection.map(|s|[[s.start.line.0,s.start.column.0 as i32],[s.end.line.0,s.end.column.0 as i32]]),
+                        "mouse_reporting":view.mode.intersects(TermMode::MOUSE_MODE)})
                 }),
                 "pane_transition":self.panes.get(self.active).map(|pane| pane.visibility)})
             .to_string();

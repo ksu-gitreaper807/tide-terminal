@@ -65,3 +65,95 @@ fn scrolled_selection_uses_visible_rows() {
         "line0"
     );
 }
+
+fn history() -> Replay {
+    let mut replay = Replay::new(4, 20);
+    replay.feed(
+        (0..10)
+            .map(|n| format!("line{n}"))
+            .collect::<Vec<_>>()
+            .join("\r\n")
+            .as_bytes(),
+    );
+    replay
+}
+
+#[test]
+fn retained_selection_does_not_change_text_when_viewport_scrolls() {
+    let mut r = history();
+    terminal::begin_selection(&mut r.terminal, (1, 0));
+    terminal::extend_selection(&mut r.terminal, (1, 4));
+    assert_eq!(r.terminal.selection_to_string().as_deref(), Some("line7"));
+    let range = terminal::snapshot(&r.terminal).selection;
+    for delta in [2, 100, -1, -100] {
+        terminal::scroll(&mut r.terminal, delta);
+        assert_eq!(r.terminal.selection_to_string().as_deref(), Some("line7"));
+        assert_eq!(terminal::snapshot(&r.terminal).selection, range);
+    }
+}
+
+#[test]
+fn backward_drag_expands_when_history_scrolls_under_stationary_pointer() {
+    let mut r = history();
+    terminal::begin_selection(&mut r.terminal, (1, 4));
+    terminal::extend_selection(&mut r.terminal, (1, 0));
+    terminal::scroll(&mut r.terminal, 2);
+    terminal::extend_selection(&mut r.terminal, (1, 0));
+    assert_eq!(
+        r.terminal.selection_to_string().as_deref(),
+        Some("line5\nline6\nline7")
+    );
+    terminal::scroll(&mut r.terminal, 2);
+    terminal::extend_selection(&mut r.terminal, (1, 0));
+    assert_eq!(
+        r.terminal.selection_to_string().as_deref(),
+        Some("line3\nline4\nline5\nline6\nline7")
+    );
+}
+
+#[test]
+fn forward_drag_can_select_more_than_a_screenful() {
+    let mut r = history();
+    terminal::scroll(&mut r.terminal, 100);
+    terminal::begin_selection(&mut r.terminal, (1, 0));
+    terminal::extend_selection(&mut r.terminal, (3, 4));
+    terminal::scroll(&mut r.terminal, -3);
+    terminal::extend_selection(&mut r.terminal, (3, 4));
+    assert_eq!(
+        r.terminal.selection_to_string().as_deref(),
+        Some("line1\nline2\nline3\nline4\nline5\nline6")
+    );
+}
+
+#[test]
+fn retained_selection_follows_content_when_new_output_rotates_grid() {
+    let mut r = history();
+    terminal::begin_selection(&mut r.terminal, (0, 0));
+    terminal::extend_selection(&mut r.terminal, (0, 4));
+    r.feed(b"\r\nline10\r\nline11");
+    assert_eq!(r.terminal.selection_to_string().as_deref(), Some("line6"));
+    assert!(
+        terminal::snapshot(&r.terminal)
+            .selection
+            .unwrap()
+            .start
+            .line
+            .0
+            < 0
+    );
+}
+
+#[test]
+fn retained_selection_preserves_wide_combining_and_soft_wrapped_text() {
+    for (cols, text, end, expected) in [
+        (20, "日本", (0, 1), "日"),
+        (20, "e\u{301}x", (0, 0), "e\u{301}"),
+        (4, "abcdef", (1, 1), "abcdef"),
+    ] {
+        let mut r = Replay::new(4, cols);
+        r.feed(text.as_bytes());
+        terminal::begin_selection(&mut r.terminal, end);
+        terminal::extend_selection(&mut r.terminal, (0, 0));
+        assert_eq!(r.terminal.selection_to_string().as_deref(), Some(expected));
+    }
+}

@@ -2,7 +2,7 @@
 # Maintainer: Kushal (https://github.com/ksu-gitreaper807)
 pkgname=tide-terminal
 pkgver=0.1.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Native terminal with shell integration, input alerts and command timers'
 arch=('x86_64')
 url='https://github.com/ksu-gitreaper807/tide-terminal'
@@ -31,6 +31,10 @@ build() {
     export RUSTFLAGS='-C target-cpu=x86-64'
     export CFLAGS='-O2 -pipe -march=x86-64 -mtune=generic'
     export CXXFLAGS="$CFLAGS"
+    # Source archives normalize mtimes. A shared target directory can otherwise
+    # reuse this package's old executable after source changes within one commit.
+    # Keep dependency caches, but force the application itself to rebuild.
+    cargo clean --release --package tide-terminal
     cargo build --release --locked --offline
 }
 
