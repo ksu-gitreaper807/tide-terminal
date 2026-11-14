@@ -10,7 +10,7 @@ From a checkout with its source files tracked in Git:
 bash packaging/build-arch.sh /absolute/path/to/package-output
 cd /absolute/path/to/package-output
 sha256sum -c SHA256SUMS
-sudo pacman -U ./tide-terminal-0.1.0-4-x86_64.pkg.tar.zst
+sudo pacman -U ./tide-terminal-0.1.0-5-x86_64.pkg.tar.zst
 tide-terminal
 ```
 

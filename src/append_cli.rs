@@ -156,7 +156,9 @@ pub fn run(fragment: &str) -> Result<i32> {
         .take((CAPTURE_LIMIT * 18 + 131_072) as u64)
         .read_to_end(&mut bytes)?;
     let source: Option<CapturedRun> = serde_json::from_slice(&bytes)?;
-    let source = source.context("No completed command is captured in this terminal yet")?;
+    let source = source.context(
+        "No completed command is captured in this terminal yet. Run the source command by itself, wait for a new prompt, then submit A_: separately. Do not paste the source and A_: together as one block",
+    )?;
     let code = source
         .exit_code
         .context("The source command has not finished")?;

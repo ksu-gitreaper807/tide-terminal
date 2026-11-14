@@ -407,6 +407,46 @@ fn every_shell_reports_empty_source_then_uses_next_completed_command() {
         assert_eq!(std::fs::read(dir.path().join("second")).unwrap(), b"SECOND");
     }
 }
+
+#[test]
+fn fish_multiline_paste_is_one_source_and_append_explains_the_prompt_boundary() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = shell("/usr/bin/fish", dir.path());
+    let block =
+        "printf x >> source-runs\nsleep 0.05\nA_: '>> absent'\nA_: \"&& T_: 'whoami' : -s 5\"";
+    s.write(format!("\x1b[200~{block}\x1b[201~\n").into_bytes())
+        .unwrap();
+    let events = until(&s, |e| matches!(e, Event::CommandEnded { .. }));
+    let text: String = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::Output { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert!(text.contains("No completed command"), "{text}");
+    assert!(text.contains("wait for a new prompt"), "{text}");
+    assert!(text.contains("one block"), "{text}");
+    assert!(!dir.path().join("absent").exists());
+    assert_eq!(std::fs::read(dir.path().join("source-runs")).unwrap(), b"x");
+
+    // A separate submission completes and publishes even a command with no output.
+    assert_eq!(run(&s, "sleep 0.05").0, 0);
+    assert_eq!(captured(&s), "");
+    assert_eq!(run(&s, "A_: \"&& whoami | A_: '| grep . > nested'\"").0, 0);
+    assert_eq!(
+        std::fs::read(dir.path().join("nested")).unwrap(),
+        std::process::Command::new("whoami")
+            .output()
+            .unwrap()
+            .stdout
+    );
+    assert_eq!(run(&s, "A_: \"&& T_: 'whoami' : -s 5\"").0, 0);
+    assert_eq!(run(&s, "A_: '>> empty'").0, 0);
+    assert!(std::fs::read(dir.path().join("empty")).unwrap().is_empty());
+    assert_eq!(std::fs::read(dir.path().join("source-runs")).unwrap(), b"x");
+}
+
 #[test]
 fn every_shell_combines_real_stdout_stderr_and_keeps_failed_output() {
     for path in SHELLS {

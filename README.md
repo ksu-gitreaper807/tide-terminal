@@ -142,10 +142,15 @@ Capture is bounded terminal text (up to 1 MiB), with ANSI controls removed and p
 
 Follow-up commands open in a fresh instance of the source shell with its recorded directory, inheriting the application's exported environment. Interactive aliases/functions and unexported variables are not copied. They have their own normal completion/Stop lifecycle; the source command's timer is not restarted or transferred. Captures remain in memory until processing; pipe stages use a private temporary stdin file removed when the stage ends. Private source commands make their follow-up runs private too. `>>` writes only when explicitly submitted.
 
-**Append from the prompt with `A_:`.** After an ordinary command finishes:
+**Append from the prompt with `A_:`.** Run the source command by itself:
 
 ```sh
 printf 'Hello\nbye\n'
+```
+
+Wait for the shell prompt to return, then submit an action. Each line below is a separate prompt submission:
+
+```sh
 A_: '| grep -i "hello"'
 A_: '>> results.txt'
 A_: '>> "results with spaces.txt"'
@@ -154,16 +159,31 @@ A_: '&& echo "Previous command succeeded"'
 
 The shell function is installed in new Bash, Zsh and Fish tabs. The source is never rerun. Repeated `A_:` actions reuse the same last completed ordinary command; the follow-up's output and confirmations do not replace it. Another ordinary command becomes the new source. CLI actions run in the same tab; a pipe stage uses the source shell and recorded directory, receives finite captured stdin, and returns its own exit status. `&&` skips a failed source and returns that status. `>>` preserves existing bytes, creates absent files, and reports write errors. Quote filenames with spaces inside the action; file paths are literal without shell expansion. `./A_:` also works within an integrated Tide shell.
 
-**Nested helpers.** `A_:` and `T_:` are also available inside appended and timed Bash/Zsh/Fish commands. Keep each fragment or timed command in one quoted argument; alternate outer double quotes and inner single quotes:
+**Nested helpers.** `A_:` and `T_:` are also available inside appended and timed Bash/Zsh/Fish commands. Keep each fragment or timed command in one quoted argument; alternate outer double quotes and inner single quotes. First submit only:
 
 ```sh
 sleep 5
+```
+
+After the prompt returns, submit this action:
+
+```sh
 A_: "&& whoami | A_: '| grep k'"
+```
+
+At the next prompt, this action runs `whoami` with a five-second limit:
+
+```sh
 A_: "&& T_: 'whoami' : -s 5"
+```
+
+Another action can append a nested command's output to a file:
+
+```sh
 A_: "&& printf 'hello\\n' | A_: '>> greetings.txt'"
 ```
 
-The names are `A_:` and `T_:`, with the underscore before the colon. Leave a space between a closing quote and timer flags: `'whoami' -s 5`. Single quotes do not nest inside single quotes. Run the source first, then use `A_:` at its next prompt; `sleep 5 && A_: ...` is one unfinished shell command line and does not publish `sleep 5` as a completed source.
+The names are `A_:` and `T_:`, with the underscore before the colon. Leave a space between a closing quote and timer flags: `'whoami' -s 5`. Single quotes do not nest inside single quotes. Do not paste the source and `A_:` together as a multiline block: Fish reports that whole block as one execution, so it has not published a completed source when `A_:` runs. `sleep 5 && A_: ...` has the same boundary problem. Without a separator, `sleep 5 A_: ...` passes the extra words to `sleep`; two adjacent `A_:` invocations pass extra arguments to the first. Use ordinary shell pipes/chaining when writing a complete workflow in advance; `A_:` is for processing an already completed command at a later prompt.
 
 A nested `A_:` receiving piped or redirected stdin uses that input for `|` and `>>`, including EOF and the consumer's exit status. For example, the first nested filter above reads `whoami`'s output. It does not read the older `sleep` recording. No capture markers are inserted into the pipeline, and nested actions do not replace the original source. Unpiped actions continue to use the last completed recording. Select original stderr on the outer action (`A_: "2| A_: '| grep error'"`), or merge a new command's stderr with `2>&1` before piping; a nested `2|`/`2>>` is rejected because pipeline stdin has no separate stderr channel. The existing terminal-text and PTY limitations still apply to the original capture and timed runs.
 

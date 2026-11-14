@@ -89,7 +89,7 @@ enum Commands {
     Timer(timer::TimerArgs),
     /// Process the last completed command's captured output: A_: '| grep hello'.
     #[command(
-        after_help = "Quote the entire fragment as one argument. Nested example:\n  A_: \"&& whoami | A_: '| grep k'\"\n  A_: \"&& T_: 'whoami' : -s 5\"\nUse A_: and T_: (underscore before colon). Run the source first, then A_: at the next prompt."
+        after_help = "Quote the entire fragment as one argument. Submit each example separately:\n  A_: \"&& whoami | A_: '| grep k'\"\n  A_: \"&& T_: 'whoami' : -s 5\"\nUse A_: and T_: (underscore before colon). Run the source by itself and wait for a new prompt before A_:. Do not paste the source and A_: together as one block."
     )]
     Append {
         #[arg(allow_hyphen_values = true)]
