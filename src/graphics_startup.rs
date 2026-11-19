@@ -53,6 +53,46 @@ fn driver_plan(
     Some(plan)
 }
 
+/// PCI display devices remain visible when a GPU driver is unloaded or has no
+/// DRM node. Reading this kernel inventory does not initialize a GPU driver.
+#[cfg(target_os = "linux")]
+fn graphics_vendors(drm: &std::path::Path, pci: &std::path::Path) -> Vec<String> {
+    let mut vendors: Vec<_> = std::fs::read_dir(drm)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|entry| {
+            entry.file_name().to_str().is_some_and(|name| {
+                name.strip_prefix("card")
+                    .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+            })
+        })
+        .filter_map(|entry| std::fs::read_to_string(entry.path().join("device/vendor")).ok())
+        .collect();
+    vendors.extend(
+        std::fs::read_dir(pci)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|entry| {
+                std::fs::read_to_string(entry.path().join("class"))
+                    .ok()
+                    .and_then(|class| {
+                        u32::from_str_radix(class.trim().trim_start_matches("0x"), 16).ok()
+                    })
+                    .is_some_and(|class| class >> 16 == 0x03)
+            })
+            .filter_map(|entry| std::fs::read_to_string(entry.path().join("vendor")).ok()),
+    );
+    let mut vendors: Vec<_> = vendors
+        .into_iter()
+        .map(|v| v.trim().to_lowercase())
+        .collect();
+    vendors.sort();
+    vendors.dedup();
+    vendors
+}
+
 /// Re-exec before opening a window or initializing any graphics driver. Using a
 /// new process avoids changing process-global environment around driver threads.
 pub fn prepare(mode: GpuMode) -> anyhow::Result<()> {
@@ -68,19 +108,10 @@ pub fn prepare(mode: GpuMode) -> anyhow::Result<()> {
         if std::env::var_os(SAVED).is_some() {
             return Ok(());
         }
-        let vendors: Vec<_> = std::fs::read_dir("/sys/class/drm")
-            .into_iter()
-            .flatten()
-            .flatten()
-            .filter(|entry| {
-                entry.file_name().to_str().is_some_and(|name| {
-                    name.strip_prefix("card")
-                        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
-                })
-            })
-            .filter_map(|entry| std::fs::read_to_string(entry.path().join("device/vendor")).ok())
-            .map(|v| v.trim().to_lowercase())
-            .collect();
+        let vendors = graphics_vendors(
+            Path::new("/sys/class/drm"),
+            Path::new("/sys/bus/pci/devices"),
+        );
         if !vendors.iter().any(|vendor| vendor == "0x10de") {
             return Ok(());
         }
@@ -163,6 +194,50 @@ fn restore(cmd: &mut CommandBuilder, saved: Option<&str>) -> anyhow::Result<()> 
 mod tests {
     use super::*;
     use std::path::PathBuf;
+
+    #[test]
+    fn pci_display_inventory_keeps_filtering_without_a_discrete_drm_node() {
+        let dir = tempfile::tempdir().unwrap();
+        let drm = dir.path().join("drm");
+        let pci = dir.path().join("pci");
+        let intel = drm.join("card1/device");
+        std::fs::create_dir_all(&intel).unwrap();
+        std::fs::write(intel.join("vendor"), "0x8086\n").unwrap();
+        for (device, class, vendor) in [
+            ("0000:00:02.0", "0x030000", "0x8086"),
+            ("0000:01:00.0", "0x030200", "0x10DE"),
+            ("0000:02:00.0", "0x020000", "0x1234"),
+            ("0000:03:00.0", "invalid", "0x1002"),
+        ] {
+            let path = pci.join(device);
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(path.join("class"), class).unwrap();
+            std::fs::write(path.join("vendor"), vendor).unwrap();
+        }
+        let vendors = graphics_vendors(&drm, &pci);
+        assert_eq!(vendors, ["0x10de", "0x8086"]);
+        assert!(
+            driver_plan(
+                GpuMode::Integrated,
+                &vendors,
+                &["intel_icd.json".into()],
+                Some("50_mesa.json".into()),
+                |_| false
+            )
+            .is_some()
+        );
+        // An unrelated NVIDIA device must not be mistaken for a display GPU.
+        std::fs::write(pci.join("0000:01:00.0/class"), "0x020000").unwrap();
+        assert_eq!(graphics_vendors(&drm, &pci), ["0x8086"]);
+        // Systems without readable PCI inventory retain the DRM fallback.
+        assert_eq!(
+            graphics_vendors(&drm, &dir.path().join("missing")),
+            ["0x8086"]
+        );
+        std::fs::remove_dir_all(&drm).unwrap();
+        std::fs::write(pci.join("0000:01:00.0/class"), "0x030200").unwrap();
+        assert_eq!(graphics_vendors(&drm, &pci), ["0x10de", "0x8086"]);
+    }
 
     #[test]
     fn hybrid_policy_keeps_matching_mesa_drivers_and_gl_fallback() {
