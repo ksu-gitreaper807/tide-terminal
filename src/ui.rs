@@ -82,6 +82,7 @@ pub fn launch(mut options: UiOptions) -> Result<()> {
 }
 
 struct Pane {
+    notification: Option<(u64, String)>,
     session: Session,
     label: String,
     cursor: Option<Pos2>,
@@ -190,6 +191,7 @@ struct CloseRequest {
 }
 
 struct App {
+    notifications: tide_terminal::notifications::Notifications,
     config: Config,
     options: UiOptions,
     panes: Vec<Pane>,
@@ -262,7 +264,11 @@ impl App {
         } else {
             "No GPU adapter".into()
         };
+        let wake = cc.egui_ctx.clone();
         let mut app = Self {
+            notifications: tide_terminal::notifications::Notifications::new(move || {
+                wake.request_repaint()
+            }),
             config,
             options,
             panes: vec![],
@@ -334,7 +340,9 @@ impl App {
         };
         o.history = Some(crate::history_path());
         o.private = self.config.private;
-        o.notifications = self.config.notifications;
+        // GUI alerts route clicks to this window and session. CLI notifications
+        // remain owned by the session supervisor.
+        o.notifications = false;
         o.suggestions = self.config.enhanced_suggestions;
         o
     }
@@ -344,6 +352,7 @@ impl App {
         ctx.animate_value_with_time(egui::Id::new(("tab_open", session.id)), 0., 0.18);
         ctx.animate_value_with_time(egui::Id::new(("pane_visible", session.id)), 0., 0.18);
         self.panes.push(Pane {
+            notification: None,
             session,
             label,
             cursor: None,
@@ -571,6 +580,24 @@ impl App {
             if let Some(label) = command_label(&pane.session.state.lock().unwrap().last_command) {
                 pane.label = label;
             }
+            // Persistent state survives the bounded output-event queue.
+            let attention = {
+                let state = pane.session.state.lock().unwrap();
+                state
+                    .attention
+                    .as_ref()
+                    .filter(|_| self.config.notifications && state.running)
+                    .map(|message| (state.run_id, message.clone()))
+            };
+            if attention != pane.notification {
+                if let Some((run, message)) = &attention {
+                    self.notifications
+                        .show(pane.session.id, *run, message.clone());
+                } else {
+                    self.notifications.close(pane.session.id);
+                }
+                pane.notification = attention;
+            }
             for event in pane.session.events.try_iter() {
                 if let Some(log) = &mut self.event_log {
                     let _ = writeln!(log, "{}", serde_json::json!({"pane":i,"event":event}));
@@ -580,7 +607,10 @@ impl App {
                     Event::RuleTriggered { reason, .. } => Some(reason),
                     Event::Stopping { reason, .. } => Some(reason),
                     Event::Escalated { .. } => Some("Grace period ended · forced stop".into()),
-                    Event::Exited { code, .. } => Some(format!("Run exited with status {code}")),
+                    Event::Exited { code, .. } => {
+                        self.notifications.close(pane.session.id);
+                        Some(format!("Run exited with status {code}"))
+                    }
                     Event::Error { message } => {
                         self.error = Some(message.clone());
                         Some(message)
@@ -620,6 +650,7 @@ impl App {
         match target {
             CloseTarget::Tab(id) => {
                 if let Some(index) = self.panes.iter().position(|pane| pane.session.id == id) {
+                    self.notifications.close(id);
                     self.panes.remove(index);
                     if index < self.active {
                         self.active -= 1;
@@ -2014,7 +2045,7 @@ impl eframe::App for App {
     fn clear_color(&self, _: &egui::Visuals) -> [f32; 4] {
         [0., 0., 0., 0.]
     }
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.qa_rects.clear();
         // Sample targets before actions that can spend time launching or reaping
         // a shell. Their changes start animating on the next, freshly timed frame.
@@ -2035,6 +2066,35 @@ impl eframe::App for App {
             self.request_close(CloseTarget::Window, ctx);
         }
         self.poll();
+        for activation in self.notifications.activations.try_iter() {
+            let Some(index) = self.panes.iter().position(|pane| {
+                let state = pane.session.state.lock().unwrap();
+                self.config.notifications
+                    && pane.session.id == activation.session
+                    && state.run_id == activation.run
+                    && state.attention.is_some()
+            }) else {
+                continue;
+            };
+            if let Some(log) = &mut self.event_log {
+                let _ = writeln!(
+                    log,
+                    "{}",
+                    serde_json::json!({"notification_activation":{"pane":index,"session":activation.session}})
+                );
+            }
+            self.active = index;
+            self.scroll_active_tab = true;
+            self.run_open = false;
+            self.append_open = false;
+            self.settings = false;
+            self.history_open = false;
+            self.close_request = None;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            let _ = crate::window_activation::activate(frame, activation.token.as_deref());
+            focus_terminal(ctx, terminal_input_id(activation.session));
+            ctx.request_repaint();
+        }
         if !self.options.hold
             && let Some(id) = self.startup_command
             && self

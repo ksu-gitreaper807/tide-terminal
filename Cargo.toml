@@ -7,7 +7,7 @@ license = "MIT"
 
 [features]
 default = ["desktop"]
-desktop = ["dep:eframe", "dep:image", "dep:ttf-parser"]
+desktop = ["dep:eframe", "dep:image", "dep:ttf-parser", "dep:raw-window-handle", "dep:wayland-client", "dep:wayland-backend", "dep:wayland-protocols", "dep:zbus", "dep:async-channel", "dep:futures-lite", "dep:x11rb"]
 
 [dependencies]
 alacritty_terminal = "0.26"
@@ -28,6 +28,14 @@ toml = "0.9"
 tempfile = "3"
 ttf-parser = { version = "0.25", optional = true }
 vte = "0.15"
+zbus = { version = "5", optional = true }
+async-channel = { version = "2", optional = true }
+futures-lite = { version = "2", optional = true }
+x11rb = { version = "0.13", optional = true }
+raw-window-handle = { version = "0.6", optional = true }
+wayland-client = { version = "0.31.10", optional = true }
+wayland-backend = { version = "0.3.10", features = ["client_system"], optional = true }
+wayland-protocols = { version = "0.32", features = ["client", "staging"], optional = true }
 
 [patch.crates-io]
 egui-winit = { path = "vendor/egui-winit" }

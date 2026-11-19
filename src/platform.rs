@@ -31,7 +31,14 @@ pub fn notify(title: &str, message: &str) {
     let message = message.to_owned();
     std::thread::spawn(move || {
         let _ = std::process::Command::new("notify-send")
-            .args(["--app-name=Tide", "--", &title, &message])
+            .args([
+                "--app-name=Tide",
+                "--icon=tide-terminal",
+                "--hint=string:desktop-entry:tide-terminal",
+                "--",
+                &title,
+                &message,
+            ])
             .status();
     });
 }

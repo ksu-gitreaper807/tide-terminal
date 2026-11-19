@@ -19,6 +19,8 @@ mod gpu;
 mod theme;
 #[cfg(feature = "desktop")]
 mod ui;
+#[cfg(feature = "desktop")]
+mod window_activation;
 
 #[derive(Parser)]
 #[command(

@@ -5,6 +5,8 @@ pub mod capture;
 pub mod config;
 pub mod graphics_startup;
 pub mod history;
+#[cfg(feature = "desktop")]
+pub mod notifications;
 pub mod observer;
 pub mod platform;
 mod processes;

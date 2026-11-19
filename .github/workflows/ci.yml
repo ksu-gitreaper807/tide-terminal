@@ -30,7 +30,7 @@ jobs:
       - name: Install shell and desktop build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libxkbcommon-x11-0 libwayland-dev libx11-dev xvfb xauth mesa-vulkan-drivers python3-xlib python3-pil btop less man-db manpages desktop-file-utils
+          sudo apt-get install -y zsh fish pkg-config libxkbcommon-dev libxkbcommon-x11-0 libwayland-dev libx11-dev xvfb xauth mesa-vulkan-drivers python3-xlib python3-pil python3-gi gir1.2-gtk-3.0 dbus btop less man-db manpages desktop-file-utils
       - name: Install Rust
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt --component clippy
@@ -66,6 +66,9 @@ jobs:
       - name: GUI integration on explicitly selected software renderer
         run: |
           xvfb-run -a -s '-screen 0 1920x1080x24' /usr/bin/python3 scripts/gui_smoke.py --gpu software --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --output-dir "$PWD/qa-results/gui-software" --btop-binary /usr/bin/btop
+      - name: Desktop input notifications, icon and click activation
+        run: |
+          xvfb-run -a -s '-screen 0 1920x1080x24' /usr/bin/python3 scripts/gui_smoke.py --notifications-only --gpu software --binary "$PWD/bin/tide-terminal" --work-dir "$PWD/.ci-work" --output-dir "$PWD/qa-results/notifications-software"
       - name: Relocated package and desktop launch integration
         run: |
           bash packaging/stage.sh "$PWD/bin/tide-terminal" "$PWD/.ci-work/relocated package"

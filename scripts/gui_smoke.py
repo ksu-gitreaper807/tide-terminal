@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--kwin-input-helper",type=Path)
     parser.add_argument("--backend", choices=["x11", "wayland"], default="x11")
+    parser.add_argument("--notifications-only", action="store_true")
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--titles-only", action="store_true")
@@ -41,7 +42,7 @@ def main():
     parser.add_argument("--eza-binary", type=Path)
     parser.add_argument("--icons-only", action="store_true")
     args = parser.parse_args()
-    if args.backend == "wayland" and (not args.scroll_selection_only or not args.kwin_input_helper
+    if args.backend == "wayland" and (not (args.scroll_selection_only or args.notifications_only) or not args.kwin_input_helper
                                       or os.environ.get("WAYLAND_DISPLAY") != "tide-qa-test"):
         parser.error("Wayland selection checks require --scroll-selection-only, --kwin-input-helper and the isolated tide-qa-test compositor")
     if args.btop_only and not args.btop_binary:
@@ -66,6 +67,12 @@ def main():
             (scratch / "java-home").mkdir()
             (scratch / "java-prefs").mkdir()
             env["JAVA_TOOL_OPTIONS"] = f'-Djava.util.prefs.userRoot="{scratch / "java-prefs"}" -Duser.home="{scratch / "java-home"}"'
+        notifications = None
+        if args.notifications_only:
+            from notification_fixture import Fixture
+            notifications = Fixture(scratch, args.backend)
+            env['DBUS_SESSION_BUS_ADDRESS'] = notifications.address
+            (scratch / '.tide.toml').write_text('notifications = true\n')
         process = subprocess.Popen([str(args.binary), "gui", "--gpu", args.gpu, "--qa", "--clean", "--shell", args.shell,
                                     "--event-log", str(log), "--screenshot",str(args.output_dir / "canvas.png")], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         d = display.Display()
@@ -927,6 +934,79 @@ def main():
             assert stdout_file.read_text()=="Hello\nbeta\nHello\nbeta\n"
             results["gui_cli_nested_timer_preserves_original_capture"]="passed"
 
+        def check_notifications():
+            import hashlib
+            # Existing shell in tab zero; create a second tab and run an input fixture.
+            click('new_tab')
+            wait(lambda: len(ui_state().get('tabs', [])) == 2, 'second notification tab')
+            wait(lambda: ui_state().get('active_tab') == 1, 'second tab active')
+            wait(lambda: any(r.get('pane') == 1 and r.get('event', {}).get('event') == 'prompt' for r in records()), 'second tab shell ready')
+            time.sleep(.5)
+            for number, prompt in enumerate(('Password:', 'Place your finger on the fingerprint reader', 'Continue? [y/N]')):
+                source = scratch / 'input-fixture.py'
+                source.write_text('import getpass\ngetpass.getpass(' + repr(prompt) + ')\nprint("NOTIFICATION_RESPONSE_RECEIVED")\n')
+                before = len(records())
+                notices_before = len(notifications.records())
+                text('python3 ' + str(source) + '\n', interval=.015)
+                wait(lambda: event_after(before, lambda e: e['event'] == 'attention'), 'detected input prompt')
+                notice = wait(lambda: next((n for n in notifications.records()[notices_before:] if 'notice' in n), None), 'desktop notification')
+                assert notice['body'] == ('May need a password', 'May need a fingerprint scan', 'May need confirmation')[number]
+                assert notice['app'] == 'Tide' and notice['icon'] == 'tide-terminal'
+                assert notice['desktop_entry'] == 'tide-terminal'
+                assert notice['actions'] == ['default', 'Open Tide']
+                assert notice['image'] == [128, 128, 512, True, 8, 4]
+                with Image.open(Path(__file__).resolve().parent.parent / 'assets/branding/window-icon.png') as artwork:
+                    assert notice['image_sha256'] == hashlib.sha256(artwork.convert('RGBA').tobytes()).hexdigest()
+                key('Tab', ('Control_L', 'Shift_L'))
+                wait(lambda: ui_state()['active_tab'] == 0, 'switch away from waiting tab')
+                notifications.arm(notice['notice'])
+                if args.backend == 'wayland':
+                    kwin_script('for (const w of workspace.windowList()) { if (w.pid === ' + str(notifications.process.pid) + ') { w.noBorder=true; w.frameGeometry={x:1280,y:100,width:480,height:220}; workspace.activeWindow=w; }}')
+                    time.sleep(.4)
+                    if number == 1:
+                        kwin_script('for (const w of workspace.windowList()) { if (w.pid === ' + str(process.pid) + ') w.minimized=true; }')
+                        time.sleep(.2)
+                    # GTK's button is the bottom child in the 480x220 test notification.
+                    x,y = 1520,290
+                else:
+                    def find_notice():
+                        for child in root.query_tree().children:
+                            if child.get_wm_name() == 'Tide notification QA': return child
+                    popup = wait(find_notice, 'notification test window')
+                    wait(lambda: popup.get_attributes().map_state == X.IsViewable, 'notification window mapped')
+                    popup.configure(x=1280, y=100, width=480, height=220)
+                    if helper:
+                        kwin_script('for (const w of workspace.windowList()) { if (w.pid === ' + str(notifications.process.pid) + ') workspace.activeWindow=w; }')
+                    else:
+                        popup.set_input_focus(X.RevertToParent, X.CurrentTime)
+                    d.sync();time.sleep(.3)
+                    assert d.get_input_focus().focus.id != window.id
+                    # Also cover restoration from minimized/hidden on the X11 backend.
+                    if number == 1:
+                        window.unmap();d.sync()
+                    origin = root.translate_coords(popup,0,0)
+                    x,y = origin.x + 240,origin.y + 190
+                inject(d, X.MotionNotify, x=x, y=y)
+                inject(d, X.ButtonPress, 1);d.sync();time.sleep(.08)
+                inject(d, X.ButtonRelease, 1);d.sync()
+                clicked = wait(lambda: next((n for n in notifications.records() if n.get('clicked') == notice['notice']), None), 'notification body action')
+                if args.backend == 'wayland':
+                    assert clicked['activation_token_received'], clicked
+                wait(lambda: ui_state()['active_tab'] == 1, 'notification selects waiting tab')
+                if args.backend != 'wayland':
+                    wait(lambda: d.get_input_focus().focus.id == window.id, 'Tide raised and focused')
+                # Do not click/refocus Tide here. Input must follow the notification action.
+                text('synthetic-response\n')
+                wait(lambda: event_after(before, lambda e: e['event'] == 'command_ended' and e['code'] == 0), 'notification returns keyboard input to waiting command')
+                wait(lambda: any(n.get('closed') == notice['notice'] for n in notifications.records()), 'answered prompt notification withdrawn')
+                assert all('synthetic-response' not in n.get('body', '') for n in notifications.records())
+            results['gui_notifications_tide_icon_and_desktop_identity'] = 'passed'
+            results['gui_notification_click_raises_window_and_selects_prompt_tab'] = 'passed'
+            results['gui_notification_password_fingerprint_confirmation_and_cleanup'] = 'passed'
+            results['gui_notification_restores_minimized_or_hidden_window'] = 'passed'
+            if args.backend == 'wayland':
+                results['gui_wayland_notification_activation_token'] = 'passed'
+
         try:
             wait(lambda: event_after(0, lambda e: e["event"] == "prompt"), "initial shell prompt")
             gpu=wait(lambda:next((r['gpu'] for r in records() if 'gpu' in r),None),'actual GPU adapter')
@@ -938,7 +1018,10 @@ def main():
             # This catches falling back to the framework's generic window icon.
             if args.backend == "wayland":
                 results['native_display_backend'] = 'wayland'
-                check_scrollback_selection()
+                if args.notifications_only:
+                    check_notifications()
+                else:
+                    check_scrollback_selection()
                 return
             icon = window.get_full_property(d.intern_atom('_NET_WM_ICON'), X.AnyPropertyType)
             assert icon is not None and icon.format == 32, 'native application icon is missing'
@@ -951,6 +1034,9 @@ def main():
                                   for r, g, b, a in zip(rgba[0::4], rgba[1::4], rgba[2::4], rgba[3::4])], \
                 'window manager icon differs from the Tide artwork'
             results['gui_native_window_uses_tide_icon'] = 'passed'
+            if args.notifications_only:
+                check_notifications()
+                return
             if args.scroll_selection_only:
                 check_scrollback_selection()
                 return
@@ -1301,6 +1387,9 @@ def main():
                 if log.exists():
                     (args.output_dir / "events.jsonl").write_text(log.read_text())
                 (args.output_dir / "gui-results.json").write_text(json.dumps(results, indent=2) + "\n")
+                if notifications:
+                    (args.output_dir / 'notification-events.jsonl').write_text(notifications.log.read_text())
+                    notifications.close()
                 if helper:
                     helper.stdin.close();helper.wait(timeout=3)
         print(json.dumps(results, indent=2))
