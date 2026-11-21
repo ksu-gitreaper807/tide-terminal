@@ -774,6 +774,8 @@ impl App {
                 if let Some(index) = self.panes.iter().position(|pane| pane.session.id == id) {
                     self.notifications.close(id);
                     self.panes.remove(index);
+                    // Drop the entire pane before asking glibc to return free pages.
+                    tide_terminal::platform::reclaim_idle_memory();
                     if index < self.active {
                         self.active -= 1;
                     }

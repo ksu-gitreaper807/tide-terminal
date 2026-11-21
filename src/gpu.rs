@@ -30,7 +30,16 @@ fn rank(mode: GpuMode, device: wgpu::DeviceType, backend: wgpu::Backend) -> Opti
 }
 
 pub fn configuration(mode: GpuMode) -> WgpuConfiguration {
+    let defaults = WgpuSetupCreateNew::default();
+    let describe = defaults.device_descriptor.clone();
     let setup = WgpuSetupCreateNew {
+        // Terminal frames are small. Avoid the game-oriented large allocation
+        // pools while keeping backend fallback, limits and adapter policy intact.
+        device_descriptor: Arc::new(move |adapter| {
+            let mut descriptor = describe(adapter);
+            descriptor.memory_hints = wgpu::MemoryHints::MemoryUsage;
+            descriptor
+        }),
         power_preference: if mode == GpuMode::Discrete {
             wgpu::PowerPreference::HighPerformance
         } else {
@@ -47,7 +56,7 @@ pub fn configuration(mode: GpuMode) -> WgpuConfiguration {
                 .map(|(_, adapter)| adapter.clone())
                 .ok_or_else(|| format!("No surface-compatible {} adapter is available. Check its driver, or explicitly choose gui --gpu auto or --gpu software.", mode.label()))
         })),
-        ..Default::default()
+        ..defaults
     };
     WgpuConfiguration {
         wgpu_setup: WgpuSetup::CreateNew(setup),

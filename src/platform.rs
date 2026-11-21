@@ -101,3 +101,16 @@ pub fn integration_token() -> std::io::Result<String> {
     std::fs::File::open("/dev/urandom")?.read_exact(&mut bytes)?;
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
+
+/// Return free allocator pages after a tab's session and buffers have dropped.
+/// glibc otherwise retains per-thread arena pages across repeated session churn.
+/// This is deliberately outside the render/output path and does not alter child
+/// allocator settings. Other C libraries manage their own reclamation policy.
+pub fn reclaim_idle_memory() {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    // SAFETY: malloc_trim is glibc's thread-safe request to release unused pages;
+    // it does not invalidate live allocations or require pointers from callers.
+    unsafe {
+        libc::malloc_trim(0);
+    }
+}

@@ -114,7 +114,7 @@ def main():
             value = getattr(args, option)
             if value:
                 command.extend(['--' + option.replace('_', '-'), value.resolve()])
-        checks.append(('gui', command, 300))
+        checks.append(('gui', command, 600))
     else:
         report['not_run'].append('GUI / physical display and iGPU rendering')
     success = True

@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -28,6 +29,7 @@ def main():
     parser.add_argument("--backend", choices=["x11", "wayland"], default="x11")
     parser.add_argument("--notifications-only", action="store_true")
     parser.add_argument("--config-only", action="store_true")
+    parser.add_argument("--memory-only", action="store_true")
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--titles-only", action="store_true")
@@ -935,6 +937,37 @@ def main():
             assert stdout_file.read_text()=="Hello\nbeta\nHello\nbeta\n"
             results["gui_cli_nested_timer_preserves_original_capture"]="passed"
 
+        def check_tab_memory():
+            import platform
+            if not sys.platform.startswith('linux') or platform.libc_ver()[0]!='glibc':
+                results['gui_closed_tab_memory_reclamation']='not applicable outside Linux/glibc'
+                return
+            while len(ui_state()['tabs'])>1:
+                close_fixture_tab()
+            def pss():
+                lines=Path(f'/proc/{process.pid}/smaps_rollup').read_text().splitlines()
+                return int(next(line for line in lines if line.startswith('Pss:')).split()[1])
+            def cycle():
+                for expected in range(2,9):
+                    key('t',('Control_L','Shift_L'))
+                    wait(lambda:len(ui_state()['tabs'])==expected,'memory fixture tab opens')
+                    index=len(records())
+                    text('seq 1 6000\n',interval=.01)
+                    wait(lambda:event_after(index,lambda e:e['event']=='command_ended' and e['code']==0),'memory fixture output completes')
+                # Let the shell startup work and terminal buffers settle.
+                time.sleep(.8)
+                while len(ui_state()['tabs'])>1:
+                    close_fixture_tab()
+                time.sleep(.6)
+                return pss()
+            warm=cycle()
+            measurements=[cycle(),cycle()]
+            # Same warmed window and same tab count; allow driver/GUI noise,
+            # but catch the former ~3 MiB retained per closed tab.
+            results['gui_tab_memory_pss_kib']={'warm':warm,'after_cycles':measurements,'allowed_growth_kib':24*1024}
+            assert max(measurements)-warm < 24*1024,(warm,measurements)
+            results['gui_closed_tab_memory_reclamation']='passed'
+
         def check_configuration():
             # Changing a real config file must affect the window without restarting it.
             config_path=scratch / ".tide.toml"
@@ -1061,6 +1094,9 @@ def main():
                                   for r, g, b, a in zip(rgba[0::4], rgba[1::4], rgba[2::4], rgba[3::4])], \
                 'window manager icon differs from the Tide artwork'
             results['gui_native_window_uses_tide_icon'] = 'passed'
+            if args.memory_only:
+                check_tab_memory()
+                return
             if args.config_only:
                 check_configuration()
                 return
@@ -1386,6 +1422,7 @@ def main():
             wait(lambda: event_after(index, lambda e: e["event"] == "command_ended" and e["code"] == 0), "preview shell command completes")
             time.sleep(.45)
             screenshot("terminal.png")
+            check_tab_memory()
             check_configuration()
             check_window_shutdown()
         finally:
