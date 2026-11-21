@@ -43,6 +43,7 @@ pub struct Options {
     pub cwd: PathBuf,
     pub rows: u16,
     pub cols: u16,
+    pub history_lines: usize,
     pub rules: RuleSpec,
     pub history: Option<PathBuf>,
     pub private: bool,
@@ -61,6 +62,7 @@ impl Options {
             cwd,
             rows: 30,
             cols: 100,
+            history_lines: 10_000,
             rules: RuleSpec::default(),
             history: None,
             private: false,
@@ -444,8 +446,11 @@ impl Session {
             hold,
             read_tx,
         )?;
-        let (terminal, core_events) =
-            terminal::create(options.rows.max(2) as usize, options.cols.max(2) as usize);
+        let (terminal, core_events) = terminal::create_with_history(
+            options.rows.max(2) as usize,
+            options.cols.max(2) as usize,
+            options.history_lines,
+        );
         let id = next_id();
         let run_id = next_id();
         let state = Arc::new(Mutex::new(State {
@@ -550,6 +555,9 @@ impl Session {
     }
     pub fn snapshot(&self) -> terminal::View {
         terminal::snapshot(&self.state.lock().unwrap().terminal)
+    }
+    pub fn snapshot_with_colors(&self, foreground: [u8; 3], background: [u8; 3]) -> terminal::View {
+        terminal::snapshot_with_colors(&self.state.lock().unwrap().terminal, foreground, background)
     }
     pub fn scroll(&self, lines: i32) {
         terminal::scroll(&mut self.state.lock().unwrap().terminal, lines);

@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--kwin-input-helper",type=Path)
     parser.add_argument("--backend", choices=["x11", "wayland"], default="x11")
     parser.add_argument("--notifications-only", action="store_true")
+    parser.add_argument("--config-only", action="store_true")
     parser.add_argument("--run-input-only", action="store_true")
     parser.add_argument("--focus-only", action="store_true")
     parser.add_argument("--titles-only", action="store_true")
@@ -55,7 +56,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="tide-gui-", dir=args.work_dir) as temporary:
         scratch = Path(temporary)
         log = scratch / "events.jsonl"
-        env = os.environ.copy()
+        env = os.environ.copy(); env.pop("TIDE_PROFILE", None)
         env.pop("DISPLAY" if args.backend == "wayland" else "WAYLAND_DISPLAY", None)
         env.update(TIDE_CONFIG=str(scratch / ".tide.toml"), XDG_CONFIG_HOME=str(scratch / "config"),
                    XDG_DATA_HOME=str(scratch / "data"),
@@ -934,6 +935,32 @@ def main():
             assert stdout_file.read_text()=="Hello\nbeta\nHello\nbeta\n"
             results["gui_cli_nested_timer_preserves_original_capture"]="passed"
 
+        def check_configuration():
+            # Changing a real config file must affect the window without restarting it.
+            config_path=scratch / ".tide.toml"
+            saved_config=config_path.read_text() if config_path.exists() else ""
+            config_path.write_text('[appearance]\ntheme="midnight"\nfont_size=17.0\n[graphics]\nreduced_motion=true\n[notifications]\ninput_required=false\n[keybindings]\nnew_tab="Ctrl+Alt+N"\n')
+            wait(lambda:ui_state().get('preferences',{}).get('new_tab_binding')=='Ctrl+Alt+N','live keybinding reload',timeout=8)
+            assert ui_state()['preferences']['theme']=='midnight'
+            assert ui_state()['preferences']['font_size']==17.0
+            results['gui_grouped_config_live_reload']='passed'
+            index=len(records())
+            key('n',('Control_L','Alt_L'))
+            wait(lambda:event_after(index,lambda e:e['event']=='started' and not e['managed']),'remapped new tab')
+            results['gui_remapped_shortcut_opens_terminal']='passed'
+            config_path.write_text('default_profile="reading"\n[profiles.reading.appearance]\nfont_size=20.0\n[profiles.reading.keybindings]\nnew_tab="Ctrl+Alt+N"\n')
+            wait(lambda:ui_state().get('preferences',{}).get('profile')=='reading','profile reload',timeout=8)
+            assert ui_state()['preferences']['font_size']==20.0
+            results['gui_named_profile_overrides_are_applied']='passed'
+            config_path.write_text('[appearance]\nfont_size=-10.0\n')
+            wait(lambda:ui_state().get('preferences',{}).get('config_error'),'invalid config edit reported',timeout=8)
+            assert ui_state()['preferences']['font_size']==20.0
+            results['gui_invalid_reload_keeps_working_preferences']='passed'
+            config_path.write_text(saved_config)
+            # Error dialog may hold focus; close it through its normal Escape path.
+            key('Escape')
+            wait(lambda:ui_state().get('preferences',{}).get('new_tab_binding')=='Ctrl+Shift+T','restore working config',timeout=8)
+
         def check_notifications():
             import hashlib
             # Existing shell in tab zero; create a second tab and run an input fixture.
@@ -1034,6 +1061,9 @@ def main():
                                   for r, g, b, a in zip(rgba[0::4], rgba[1::4], rgba[2::4], rgba[3::4])], \
                 'window manager icon differs from the Tide artwork'
             results['gui_native_window_uses_tide_icon'] = 'passed'
+            if args.config_only:
+                check_configuration()
+                return
             if args.notifications_only:
                 check_notifications()
                 return
@@ -1257,17 +1287,17 @@ def main():
             config_path = scratch / ".tide.toml"
             config = tomllib.loads(config_path.read_text())
             assert config_path.stat().st_mode & 0o777 == 0o600
-            assert config["gpu"] == args.gpu, config
-            assert config["font_file"] == "", config
+            assert config["graphics"]["adapter"] == args.gpu, config
+            assert config["appearance"]["font_file"] == "", config
             results["dotfile_preferences_and_private_permissions"] = "passed"
             font_path = Path(__file__).resolve().parent.parent / "assets/fonts/DejaVuSans.ttf"
             click("font_file")
             text(str(font_path))
             click("save_settings")
-            assert tomllib.loads(config_path.read_text())["font_file"] == str(font_path)
+            assert tomllib.loads(config_path.read_text())["appearance"]["font_file"] == str(font_path)
             results["font_file_preference_saved_for_restart"] = "passed"
             screenshot("appearance.png")
-            assert .3 <= config["opacity"] < .9, config
+            assert .3 <= config["appearance"]["opacity"] < .9, config
             results["live_opacity_and_saved_settings"] = "passed"
             key("Escape")
             canvas=args.output_dir / "canvas.png"
@@ -1356,6 +1386,7 @@ def main():
             wait(lambda: event_after(index, lambda e: e["event"] == "command_ended" and e["code"] == 0), "preview shell command completes")
             time.sleep(.45)
             screenshot("terminal.png")
+            check_configuration()
             check_window_shutdown()
         finally:
             try:

@@ -35,7 +35,7 @@ def main():
     scratch.mkdir(parents=True, exist_ok=True)
     if args.gui and not os.environ.get('DISPLAY'):
         parser.error('--gui requires an isolated accelerated DISPLAY; see tests/README.md')
-    env = os.environ.copy()
+    env = os.environ.copy(); env.pop("TIDE_PROFILE", None)
     # Do not accidentally read or write the caller's data or send desktop notifications.
     for key in ('TIDE_HISTORY', 'TIDE_PRIVATE', 'TIDE_SHELL', 'TIDE_EXE', 'TIDE_APPEND_SOCKET', 'TIDE_APPEND_TEST_BINARY', 'PYTHONOPTIMIZE'):
         env.pop(key, None)

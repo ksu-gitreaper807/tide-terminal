@@ -24,6 +24,7 @@ pub struct UiOptions {
     pub hold: bool,
     pub gpu: Option<GpuMode>,
     pub shell: Option<String>,
+    pub profile: Option<String>,
     pub clean: bool,
     pub private: bool,
     pub demo: bool,
@@ -34,7 +35,8 @@ pub struct UiOptions {
 }
 
 pub fn launch(mut options: UiOptions) -> Result<()> {
-    let gpu_mode = options.gpu.unwrap_or(Config::load()?.gpu);
+    let startup_config = Config::load_profile(options.profile.as_deref())?;
+    let gpu_mode = options.gpu.unwrap_or(startup_config.graphics.adapter);
     tide_terminal::graphics_startup::prepare(gpu_mode)?;
     if let Some(path) = &options.working_directory {
         let path = path
@@ -59,7 +61,7 @@ pub fn launch(mut options: UiOptions) -> Result<()> {
     };
     let native = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1120., 740.])
+            .with_inner_size([startup_config.window.width, startup_config.window.height])
             .with_min_inner_size([640., 420.])
             .with_transparent(true)
             .with_app_id("tide-terminal")
@@ -83,8 +85,11 @@ pub fn launch(mut options: UiOptions) -> Result<()> {
 
 struct Pane {
     notification: Option<(u64, String)>,
+    command_started: Option<(u64, Instant)>,
+    completed_notice: Option<u64>,
     session: Session,
     label: String,
+    initial_label: String,
     cursor: Option<Pos2>,
     selection_scroll_at: Instant,
     last_size: (u16, u16),
@@ -193,6 +198,9 @@ struct CloseRequest {
 struct App {
     notifications: tide_terminal::notifications::Notifications,
     config: Config,
+    config_checked: Instant,
+    config_stamp: Option<u64>,
+    config_reload_error: Option<String>,
     options: UiOptions,
     panes: Vec<Pane>,
     active: usize,
@@ -231,22 +239,24 @@ struct App {
 }
 impl App {
     fn new(cc: &eframe::CreationContext<'_>, options: UiOptions) -> Self {
-        let mut config = Config::load().unwrap_or_default();
+        let mut config = Config::load_profile(options.profile.as_deref()).unwrap_or_default();
         if let Some(shell) = &options.shell {
-            config.shell = shell.clone();
+            config.shell.program = shell.clone();
         }
         if let Some(gpu) = options.gpu {
-            config.gpu = gpu;
+            config.graphics.adapter = gpu;
         }
-        config.private |= options.private;
-        let font_error = theme::apply_with_font(&cc.egui_ctx, &config.font_file)
-            .err()
-            .map(|error| {
-                theme::apply(&cc.egui_ctx);
-                format!(
-                    "{error:#}. Using the default font; correct Terminal font file in Settings."
-                )
-            });
+        config.privacy.private |= options.private;
+        let font_error = theme::apply_preferences(
+            &cc.egui_ctx,
+            &config.appearance.font_file,
+            &config.appearance.font_family,
+        )
+        .err()
+        .map(|error| {
+            theme::apply(&cc.egui_ctx);
+            format!("{error:#}. Using the default font; correct Terminal font file in Settings.")
+        });
         let mut event_log = options
             .event_log
             .as_ref()
@@ -270,6 +280,9 @@ impl App {
                 wake.request_repaint()
             }),
             config,
+            config_checked: Instant::now(),
+            config_stamp: config_stamp(),
+            config_reload_error: None,
             options,
             panes: vec![],
             active: 0,
@@ -309,6 +322,8 @@ impl App {
             gpu_name,
             startup_command: None,
         };
+        app.form.timeout_unit = configured_unit(&app.config.timers.default_unit);
+        app.form.idle_unit = configured_unit(&app.config.timers.default_unit);
         if app.options.execute.is_empty() {
             app.open_shell(&cc.egui_ctx);
         } else {
@@ -325,6 +340,54 @@ impl App {
         }
         app
     }
+    fn refresh_config(&mut self, ctx: &egui::Context) {
+        ctx.request_repaint_after(Duration::from_secs(1));
+        if self.settings || self.config_checked.elapsed() < Duration::from_secs(1) {
+            return;
+        }
+        self.config_checked = Instant::now();
+        let stamp = config_stamp();
+        if stamp == self.config_stamp {
+            return;
+        }
+        self.config_stamp = stamp;
+        match Config::load_profile(self.options.profile.as_deref()) {
+            Ok(mut config) => {
+                if let Some(shell) = &self.options.shell {
+                    config.shell.program = shell.clone();
+                }
+                if let Some(gpu) = self.options.gpu {
+                    config.graphics.adapter = gpu;
+                }
+                config.privacy.private |= self.options.private;
+                let restart = config.graphics.adapter != self.config.graphics.adapter
+                    || config.appearance.font_file != self.config.appearance.font_file
+                    || config.appearance.font_family != self.config.appearance.font_family
+                    || config.window != self.config.window;
+                if self.config_reload_error.as_ref() == self.error.as_ref() {
+                    self.error = None;
+                }
+                self.config_reload_error = None;
+                if !config.notifications.command_finished {
+                    for pane in &mut self.panes {
+                        if pane.completed_notice.take().is_some() {
+                            self.notifications.close(pane.session.id);
+                        }
+                    }
+                }
+                self.config = config;
+                if restart {
+                    self.activity.push_front("Settings reloaded · renderer, font and window-size changes require a restart".into());
+                }
+                self.activity.push_front("Configuration reloaded".into());
+            }
+            Err(error) => {
+                self.config_reload_error =
+                    Some(format!("{error:#}. Keeping the last working settings."));
+                self.error = self.config_reload_error.clone()
+            }
+        }
+    }
     fn base_options(&self) -> Options {
         let cwd = self
             .panes
@@ -332,28 +395,48 @@ impl App {
             .map(|p| PathBuf::from(&p.session.state.lock().unwrap().cwd))
             .filter(|p| p.is_dir())
             .or_else(|| self.options.working_directory.clone())
+            .or_else(|| {
+                (!self.config.shell.working_directory.is_empty()).then(|| {
+                    tide_terminal::config::expand_home(&self.config.shell.working_directory)
+                })
+            })
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/tmp")));
-        let mut o = Options::shell(&self.config.shell, cwd);
+        let mut o = Options::shell(&self.config.shell.program, cwd);
         o.launch = Launch::Shell {
-            path: self.config.shell.clone(),
+            path: self.config.shell.program.clone(),
             clean: self.options.clean,
         };
         o.history = Some(crate::history_path());
-        o.private = self.config.private;
+        o.private = self.config.privacy.private;
         // GUI alerts route clicks to this window and session. CLI notifications
         // remain owned by the session supervisor.
         o.notifications = false;
-        o.suggestions = self.config.enhanced_suggestions;
+        o.suggestions = self.config.shell.enhanced_suggestions;
+        o.history_lines = self.config.scrolling.history_lines;
+        if let Some(profile) = &self.config.active_profile {
+            o.env.push(("TIDE_PROFILE".into(), profile.clone()));
+        }
         o
     }
     fn push(&mut self, session: Session, label: String, ctx: &egui::Context) {
         let c = ctx.clone();
         session.set_waker(move || c.request_repaint());
-        ctx.animate_value_with_time(egui::Id::new(("tab_open", session.id)), 0., 0.18);
-        ctx.animate_value_with_time(egui::Id::new(("pane_visible", session.id)), 0., 0.18);
+        ctx.animate_value_with_time(
+            egui::Id::new(("tab_open", session.id)),
+            0.,
+            self.config.animation_duration(),
+        );
+        ctx.animate_value_with_time(
+            egui::Id::new(("pane_visible", session.id)),
+            0.,
+            self.config.animation_duration(),
+        );
         self.panes.push(Pane {
             notification: None,
+            command_started: None,
+            completed_notice: None,
             session,
+            initial_label: label.clone(),
             label,
             cursor: None,
             selection_scroll_at: Instant::now(),
@@ -381,7 +464,7 @@ impl App {
         );
         let mut o = self.base_options();
         o.launch = Launch::ShellCommand {
-            shell: self.config.shell.clone(),
+            shell: self.config.shell.program.clone(),
             command: self.form.command.clone(),
         };
         o.rules = RuleSpec {
@@ -392,7 +475,7 @@ impl App {
                 .context("Output idle limit: use a positive number or a duration such as 10s")?,
             literal: (!self.form.marker.is_empty()).then(|| self.form.marker.clone()),
             pattern: (!self.form.pattern.is_empty()).then(|| self.form.pattern.clone()),
-            grace: Duration::from_secs(3),
+            grace: self.config.stop_grace()?,
             force: self.form.force,
         };
         let s = Session::spawn(o)?;
@@ -411,7 +494,7 @@ impl App {
         Ok(())
     }
     fn load_history(&mut self) {
-        if self.config.private {
+        if self.config.privacy.private {
             self.history_rows.clear();
             return;
         }
@@ -577,8 +660,16 @@ impl App {
     }
     fn poll(&mut self) {
         for (i, pane) in self.panes.iter_mut().enumerate() {
-            if let Some(label) = command_label(&pane.session.state.lock().unwrap().last_command) {
-                pane.label = label;
+            if self.config.tabs.title == "last-command" {
+                if let Some(label) = command_label(&pane.session.state.lock().unwrap().last_command)
+                {
+                    pane.label = label
+                        .chars()
+                        .take(self.config.tabs.max_title_length)
+                        .collect();
+                }
+            } else {
+                pane.label = pane.initial_label.clone();
             }
             // Persistent state survives the bounded output-event queue.
             let attention = {
@@ -586,7 +677,7 @@ impl App {
                 state
                     .attention
                     .as_ref()
-                    .filter(|_| self.config.notifications && state.running)
+                    .filter(|_| self.config.notifications.input_required && state.running)
                     .map(|message| (state.run_id, message.clone()))
             };
             if attention != pane.notification {
@@ -602,13 +693,44 @@ impl App {
                 if let Some(log) = &mut self.event_log {
                     let _ = writeln!(log, "{}", serde_json::json!({"pane":i,"event":event}));
                 }
+                match &event {
+                    Event::Started {
+                        run_id,
+                        managed: true,
+                        ..
+                    }
+                    | Event::CommandStarted { run_id, .. } => {
+                        pane.command_started = Some((*run_id, Instant::now()));
+                        if pane.completed_notice.take().is_some() && pane.notification.is_none() {
+                            self.notifications.close(pane.session.id);
+                        }
+                    }
+                    Event::CommandEnded { run_id, .. } | Event::Exited { run_id, .. } => {
+                        if let Some((id, started)) = pane.command_started.take()
+                            && id == *run_id
+                            && self.config.notifications.command_finished
+                            && started.elapsed()
+                                >= self.config.notification_minimum().unwrap_or(Duration::MAX)
+                        {
+                            self.notifications.show(
+                                pane.session.id,
+                                *run_id,
+                                "Command finished".into(),
+                            );
+                            pane.completed_notice = Some(*run_id);
+                        }
+                    }
+                    _ => {}
+                }
                 let msg = match event {
                     Event::Attention { message, .. } => Some(message),
                     Event::RuleTriggered { reason, .. } => Some(reason),
                     Event::Stopping { reason, .. } => Some(reason),
                     Event::Escalated { .. } => Some("Grace period ended · forced stop".into()),
                     Event::Exited { code, .. } => {
-                        self.notifications.close(pane.session.id);
+                        if pane.completed_notice.is_none() {
+                            self.notifications.close(pane.session.id);
+                        }
                         Some(format!("Run exited with status {code}"))
                     }
                     Event::Error { message } => {
@@ -744,20 +866,16 @@ impl App {
             return;
         }
         let (new, run, history, settings, close, next, zoom_in, append) = ctx.input_mut(|i| {
-            let m = egui::Modifiers {
-                ctrl: true,
-                shift: true,
-                ..Default::default()
-            };
+            let keys = &self.config.keybindings;
             (
-                i.consume_key(m, Key::T),
-                i.consume_key(m, Key::R),
-                i.consume_key(m, Key::H),
-                i.consume_key(m, Key::Comma),
-                i.consume_key(m, Key::W),
-                i.consume_key(egui::Modifiers::CTRL, Key::Tab),
-                i.consume_key(egui::Modifiers::CTRL, Key::Plus),
-                i.consume_key(m, Key::A),
+                consume_binding(i, &keys.new_tab),
+                consume_binding(i, &keys.run_command),
+                consume_binding(i, &keys.history),
+                consume_binding(i, &keys.settings),
+                consume_binding(i, &keys.close_tab),
+                consume_binding(i, &keys.next_tab),
+                consume_binding(i, &keys.zoom_in),
+                consume_binding(i, &keys.append),
             )
         });
         if new {
@@ -804,7 +922,7 @@ impl App {
             self.append_open = false;
         }
         if zoom_in {
-            self.config.font_size = (self.config.font_size + 1.).min(32.);
+            self.config.appearance.font_size = (self.config.appearance.font_size + 1.).min(32.);
         }
     }
     fn toolbar(&mut self, ctx: &egui::Context, reveal: f32) {
@@ -820,7 +938,7 @@ impl App {
                     BG.r(),
                     BG.g(),
                     BG.b(),
-                    (self.config.opacity * 255.) as u8,
+                    (self.config.appearance.opacity * 255.) as u8,
                 )))
                 .show(ctx, |_| {});
             egui::Area::new("terminal_tabs".into())
@@ -861,7 +979,7 @@ impl App {
                                             let opening = ctx.animate_value_with_time(
                                                 egui::Id::new(("tab_open", pane.session.id)),
                                                 1.,
-                                                0.18,
+                                                self.config.animation_duration(),
                                             );
                                             let selected = ctx.animate_value_with_time(
                                                 egui::Id::new(("tab_selected", pane.session.id)),
@@ -899,7 +1017,10 @@ impl App {
                                                         ui.id().with(("close_tab", i)),
                                                         Sense::click(),
                                                     )
-                                                    .on_hover_text("Close terminal · Ctrl+Shift+W");
+                                                    .on_hover_text(format!(
+                                                        "Close terminal · {}",
+                                                        self.config.keybindings.close_tab
+                                                    ));
                                                 if selected > 0.
                                                     || response.hovered()
                                                     || close_response.hovered()
@@ -1041,15 +1162,15 @@ impl App {
                             widgets.hovered.bg_stroke = Stroke::new(1_f32, Color32::from_white_alpha(28));
                             widgets.active.weak_bg_fill = Color32::from_rgba_unmultiplied(77, 112, 159, 210);
                             ui.horizontal(|ui| {
-                                new_shell = track(&mut self.qa_rects, "new_tab", glass_icon_button(ui, Icon::Plus, "New terminal · Ctrl+Shift+T")).clicked();
-                                if track(&mut self.qa_rects, "run", glass_text_button(ui, "Run", 48.).on_hover_text("Run a command with stop rules · Ctrl+Shift+R")).clicked() {
+                                new_shell = track(&mut self.qa_rects, "new_tab", glass_icon_button(ui, Icon::Plus, &format!("New terminal · {}", self.config.keybindings.new_tab))).clicked();
+                                if track(&mut self.qa_rects, "run", glass_text_button(ui, "Run", 48.).on_hover_text(format!("Run a command with stop rules · {}", self.config.keybindings.run_command))).clicked() {
                                     self.append_open = false; self.run_open = true; self.run_focus = true; self.settings = false; self.history_open = false;
                                 }
-                                if track(&mut self.qa_rects, "append", glass_text_button(ui, "Append", 66.).on_hover_text("Append &&, process captured output with |, or append to a file with >> · Ctrl+Shift+A")).clicked() { self.show_append(); }
-                                if track(&mut self.qa_rects, "history", glass_text_button(ui, "History", 66.).on_hover_text("Search command history · Ctrl+Shift+H")).clicked() {
+                                if track(&mut self.qa_rects, "append", glass_text_button(ui, "Append", 66.).on_hover_text(format!("Append &&, process captured output with |, or append to a file with >> · {}", self.config.keybindings.append))).clicked() { self.show_append(); }
+                                if track(&mut self.qa_rects, "history", glass_text_button(ui, "History", 66.).on_hover_text(format!("Search command history · {}", self.config.keybindings.history))).clicked() {
                                     self.append_open = false; self.history_open = true; self.history_focus = true; self.run_open = false; self.settings = false; self.load_history();
                                 }
-                                if track(&mut self.qa_rects, "settings", glass_icon_button(ui, Icon::Settings, "Settings · Ctrl+Shift+," )).clicked() {
+                                if track(&mut self.qa_rects, "settings", glass_icon_button(ui, Icon::Settings, &format!("Settings · {}", self.config.keybindings.settings) )).clicked() {
                                     self.append_open = false; self.settings = !self.settings; self.run_open = false; self.history_open = false;
                                 }
                             });
@@ -1122,7 +1243,7 @@ impl App {
                                         .color(MUTED),
                                 );
                             }
-                            if self.config.private {
+                            if self.config.privacy.private {
                                 ui.label(RichText::new("Private").size(12.).color(MUTED));
                             }
                         });
@@ -1149,6 +1270,13 @@ impl App {
                     .id_salt("settings_scroll")
                     .max_height(body_height)
                     .show(ui, |ui| {
+                        ui.label(theme::help(format!("Configuration: {}", tide_terminal::config::config_path().display())));
+                        if let Some(profile)=&self.config.active_profile { ui.label(theme::help(format!("Active profile: {profile}"))); }
+                        if ui.button("Open configuration file").clicked() {
+                            let path=tide_terminal::config::config_path();
+                            std::thread::spawn(move || { let _=std::process::Command::new("xdg-open").arg(path).status(); });
+                        }
+                        ui.label(theme::help("File changes reload automatically while Settings is closed. Invalid edits keep the last working settings. GPU, fonts and window size need a restart; shell and scrollback changes apply to new tabs."));
                         theme::section(ui, "Appearance");
                         egui::Grid::new("appearance_grid")
                             .num_columns(2)
@@ -1164,7 +1292,7 @@ impl App {
                                             "opacity",
                                             ui.add(
                                                 egui::Slider::new(
-                                                    &mut self.config.opacity,
+                                                    &mut self.config.appearance.opacity,
                                                     0.3..=1.,
                                                 )
                                                 .show_value(false),
@@ -1174,7 +1302,7 @@ impl App {
                                         ui.label(
                                             RichText::new(format!(
                                                 "{:.0}%",
-                                                self.config.opacity * 100.
+                                                self.config.appearance.opacity * 100.
                                             ))
                                             .color(MUTED),
                                         );
@@ -1184,7 +1312,7 @@ impl App {
                                 ui.label("Terminal font size");
                                 changed |= ui
                                     .add(
-                                        egui::Slider::new(&mut self.config.font_size, 10.0..=32.0)
+                                        egui::Slider::new(&mut self.config.appearance.font_size, 10.0..=32.0)
                                             .fixed_decimals(0)
                                             .suffix(" px"),
                                     )
@@ -1192,10 +1320,10 @@ impl App {
                                 ui.end_row();
                             });
                         ui.label("Terminal font file (restart required)");
-                        changed |= track(&mut self.qa_rects, "font_file", ui.add(egui::TextEdit::singleline(&mut self.config.font_file).desired_width(f32::INFINITY).hint_text("Default, or an absolute path to a monospace .ttf / .otf font"))).changed();
+                        changed |= track(&mut self.qa_rects, "font_file", ui.add(egui::TextEdit::singleline(&mut self.config.appearance.font_file).desired_width(f32::INFINITY).hint_text("Default, or an absolute path to a monospace .ttf / .otf font"))).changed();
                         ui.add_space(8.);
                         changed |= ui
-                            .checkbox(&mut self.config.cursor_animation, "Smooth cursor motion")
+                            .checkbox(&mut self.config.cursor.animation, "Smooth cursor motion")
                             .changed();
                         ui.label(theme::help(format!("Save preferences to {}. Font-file and renderer changes apply after restarting Tide.", tide_terminal::config::config_path().display())));
                         ui.add_space(8.);
@@ -1203,7 +1331,7 @@ impl App {
                         theme::section(ui, "Shell & sessions");
                         ui.horizontal(|ui| {
                             ui.label("Default shell");
-                            let name = std::path::Path::new(&self.config.shell)
+                            let name = std::path::Path::new(&self.config.shell.program)
                                 .file_name()
                                 .unwrap_or_default()
                                 .to_string_lossy();
@@ -1214,7 +1342,7 @@ impl App {
                                     for shell in ["/bin/bash", "/bin/zsh", "/usr/bin/fish"] {
                                         changed |= ui
                                             .selectable_value(
-                                                &mut self.config.shell,
+                                                &mut self.config.shell.program,
                                                 shell.into(),
                                                 shell,
                                             )
@@ -1225,19 +1353,19 @@ impl App {
                         ui.add_space(6.);
                         changed |= ui
                             .checkbox(
-                                &mut self.config.enhanced_suggestions,
+                                &mut self.config.shell.enhanced_suggestions,
                                 "Inline command suggestions",
                             )
                             .changed();
                         changed |= ui
                             .checkbox(
-                                &mut self.config.private,
+                                &mut self.config.privacy.private,
                                 "Start new sessions without history",
                             )
                             .changed();
                         changed |= ui
                             .checkbox(
-                                &mut self.config.notifications,
+                                &mut self.config.notifications.input_required,
                                 "Desktop notifications for input prompts",
                             )
                             .changed();
@@ -1250,10 +1378,10 @@ impl App {
                         ui.horizontal(|ui| {
                             ui.label("Renderer (restart required)");
                             let combo = egui::ComboBox::from_id_salt("gpu_mode")
-                                .selected_text(self.config.gpu.label())
+                                .selected_text(self.config.graphics.adapter.label())
                                 .show_ui(ui, |ui| {
                                     for mode in [GpuMode::Integrated, GpuMode::Discrete, GpuMode::Auto, GpuMode::Software] {
-                                        changed |= ui.selectable_value(&mut self.config.gpu, mode, mode.label()).changed();
+                                        changed |= ui.selectable_value(&mut self.config.graphics.adapter, mode, mode.label()).changed();
                                     }
                                 });
                             self.qa_rects.insert("gpu_mode".into(), combo.response.rect);
@@ -1285,7 +1413,7 @@ impl App {
                         )
                         .clicked()
                         {
-                            match theme::validate_terminal_font(&self.config.font_file).and_then(|_| self.config.save()) {
+                            match theme::validate_preferences(&self.config.appearance.font_file, &self.config.appearance.font_family).and_then(|_| self.config.save()) {
                                 Ok(()) => self.settings_saved = Some(Instant::now()),
                                 Err(error) => self.error = Some(error.to_string()),
                             }
@@ -1307,7 +1435,7 @@ impl App {
                 egui::ScrollArea::vertical().id_salt("run_scroll").max_height(body_height).show(ui, |ui| {
                     ui.label(theme::help("Start a command in its own terminal. Stop it when a time limit or output rule matches."));
                     ui.add_space(8.);
-                    track(&mut self.qa_rects, "run_shell", ui.label(theme::help(format!("Shell: {} · Change in Settings", self.config.shell))).on_hover_text("Chosen in Settings → Default shell, or with the --shell launch option. Use this shell’s command syntax. Run starts a fresh instance of it with -c."));
+                    track(&mut self.qa_rects, "run_shell", ui.label(theme::help(format!("Shell: {} · Change in Settings", self.config.shell.program))).on_hover_text("Chosen in Settings → Default shell, or with the --shell launch option. Use this shell’s command syntax. Run starts a fresh instance of it with -c."));
                     ui.add_space(12.);
                     ui.label("Command");
                     let command = track(&mut self.qa_rects, "command", ui.add(egui::TextEdit::multiline(&mut self.form.command).id_salt("run_command").font(egui::TextStyle::Monospace).desired_width(f32::INFINITY).desired_rows(3).margin(egui::Margin::same(10)).hint_text(theme::hint("Enter a command to run, for example:\nsleep 30"))));
@@ -1331,7 +1459,7 @@ impl App {
                     });
                     ui.label(theme::help("Choose seconds, minutes, or hours. You can also type 30s, 5m, 2h, or 500ms."));
                     ui.add_space(10.);
-                    ui.checkbox(&mut self.form.force, "Force quit 3 seconds after a stop request");
+                    ui.checkbox(&mut self.form.force, format!("Force quit {} after a stop request", self.config.timers.stop_grace));
                     ui.label(theme::help("First match interrupts the command. Leave all rules empty for manual control."));
                     ui.add_space(8.);
                     ui.label(theme::help("Uses this tab’s working directory and a fresh shell. Aliases and local variables from an existing session are not copied."));
@@ -1394,7 +1522,7 @@ impl App {
                     .show(ui, |ui| {
                         if self.history_rows.is_empty() {
                             ui.add_space(20.);
-                            ui.label(if self.config.private {
+                            ui.label(if self.config.privacy.private {
                                 "History is paused for private sessions."
                             } else {
                                 "No matching commands."
@@ -1561,14 +1689,16 @@ impl App {
         }
     }
     fn terminal(&mut self, ctx: &egui::Context) {
-        let alpha = (self.config.opacity * 255.) as u8;
-        let fill = Color32::from_rgba_unmultiplied(BG.r(), BG.g(), BG.b(), alpha);
+        let alpha = (self.config.appearance.opacity * 255.) as u8;
+        let (background, foreground) = self.config.terminal_colors();
+        let fill =
+            Color32::from_rgba_unmultiplied(background[0], background[1], background[2], alpha);
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(fill).inner_margin(egui::Margin {
-                left: 18,
-                right: 18,
-                top: 6,
-                bottom: 12,
+                left: self.config.appearance.padding.horizontal,
+                right: self.config.appearance.padding.horizontal,
+                top: self.config.appearance.padding.vertical,
+                bottom: self.config.appearance.padding.vertical.saturating_add(6),
             }))
             .show(ctx, |ui| {
                 if self.panes.is_empty() {
@@ -1682,9 +1812,14 @@ impl App {
                     );
                     ui.add_space(12.);
                 }
-                let font = FontId::monospace(self.config.font_size);
+                let font = FontId::monospace(self.config.appearance.font_size);
                 let cell = ui
-                    .fonts(|f| Vec2::new(f.glyph_width(&font, 'M'), f.row_height(&font)))
+                    .fonts(|f| {
+                        Vec2::new(
+                            f.glyph_width(&font, 'M'),
+                            f.row_height(&font) * self.config.appearance.line_spacing,
+                        )
+                    })
                     .max(Vec2::new(1., 1.));
                 let available = ui.available_size();
                 let cols = (available.x / cell.x).floor().max(2.) as u16;
@@ -1789,7 +1924,9 @@ impl App {
                     }
                 }
                 if !modal && response.hovered() {
-                    let scroll = ctx.input(|i| i.smooth_scroll_delta.y);
+                    let scroll = ctx.input(|i| {
+                        i.smooth_scroll_delta.y * self.config.scrolling.wheel_multiplier
+                    });
                     if !mouse_mode && !mode.contains(TermMode::ALT_SCREEN) {
                         let lines = scroll_lines(&mut p.scroll_pixels, scroll, cell.y);
                         if lines != 0 {
@@ -1850,7 +1987,7 @@ impl App {
                     p.session.extend_selection(point(pos));
                 }
                 // Input may have changed both the display offset and selection.
-                let view = p.session.snapshot();
+                let view = p.session.snapshot_with_colors(foreground, background);
                 // Cell backgrounds must be below the selection, including SGR
                 // backgrounds and inverse video used by prompts and full-screen apps.
                 for c in &view.cells {
@@ -1943,7 +2080,10 @@ impl App {
                         + Vec2::new(view.cursor.1 as f32 * cell.x, view.cursor.0 as f32 * cell.y);
                     let old = p.cursor.unwrap_or(target);
                     let dt = ctx.input(|i| i.stable_dt).min(0.1);
-                    let pos = if self.config.cursor_animation {
+                    let pos = if self.config.cursor.animation
+                        && self.config.graphics.animations
+                        && !self.config.graphics.reduced_motion
+                    {
                         old.lerp(target, 1. - (-22. * dt).exp())
                     } else {
                         target
@@ -1952,9 +2092,16 @@ impl App {
                         ctx.request_repaint();
                     }
                     p.cursor = Some(pos);
-                    let visible = self.last_interaction.elapsed().as_millis() % 1000 < 650;
+                    let visible = !self.config.cursor.blink
+                        || self.last_interaction.elapsed().as_millis() % 1000 < 650;
+                    let shape = match self.config.cursor.shape.as_str() {
+                        "beam" => CursorShape::Beam,
+                        "block" => CursorShape::Block,
+                        "underline" => CursorShape::Underline,
+                        _ => view.cursor_shape,
+                    };
                     if visible || pos.distance(target) > 0.3 {
-                        let cursor_rect = match view.cursor_shape {
+                        let cursor_rect = match shape {
                             CursorShape::Beam => Rect::from_min_size(pos, Vec2::new(2., cell.y)),
                             CursorShape::Underline => Rect::from_min_size(
                                 pos + Vec2::new(0., cell.y - 2.),
@@ -1965,13 +2112,11 @@ impl App {
                         painter.rect_filled(
                             cursor_rect,
                             0.,
-                            CURSOR.gamma_multiply(
-                                if matches!(view.cursor_shape, CursorShape::Block) {
-                                    0.55
-                                } else {
-                                    0.9
-                                },
-                            ),
+                            CURSOR.gamma_multiply(if matches!(shape, CursorShape::Block) {
+                                0.55
+                            } else {
+                                0.9
+                            }),
                         );
                     }
                     ctx.request_repaint_after(Duration::from_millis(350));
@@ -2046,19 +2191,24 @@ impl eframe::App for App {
         [0., 0., 0., 0.]
     }
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.refresh_config(ctx);
         self.qa_rects.clear();
         // Sample targets before actions that can spend time launching or reaping
         // a shell. Their changes start animating on the next, freshly timed frame.
         let reveal = ctx.animate_value_with_time(
             egui::Id::new("multiple_terminal_tabs"),
-            f32::from(self.panes.len() > 1),
-            0.18,
+            f32::from(match self.config.tabs.show.as_str() {
+                "always" => true,
+                "never" => false,
+                _ => self.panes.len() > 1,
+            }),
+            self.config.animation_duration(),
         );
         for (index, pane) in self.panes.iter_mut().enumerate() {
             pane.visibility = ctx.animate_value_with_time(
                 egui::Id::new(("pane_visible", pane.session.id)),
                 f32::from(index == self.active),
-                0.18,
+                self.config.animation_duration(),
             );
         }
         if ctx.input(|i| i.viewport().close_requested()) && !self.close_approved {
@@ -2069,10 +2219,10 @@ impl eframe::App for App {
         for activation in self.notifications.activations.try_iter() {
             let Some(index) = self.panes.iter().position(|pane| {
                 let state = pane.session.state.lock().unwrap();
-                self.config.notifications
+                self.config.notifications.activate_on_click
                     && pane.session.id == activation.session
                     && state.run_id == activation.run
-                    && state.attention.is_some()
+                    && (state.attention.is_some() || pane.completed_notice == Some(activation.run))
             }) else {
                 continue;
             };
@@ -2173,6 +2323,7 @@ impl eframe::App for App {
                 .collect();
             let value = serde_json::json!({"ui":rects,"scale":ctx.pixels_per_point(),
                 "run_command":self.form.command,"run_timeout":self.form.timeout,"active_tab":self.active,
+                "preferences":{"theme":self.config.appearance.theme,"font_size":self.config.appearance.font_size,"tab_show":self.config.tabs.show,"new_tab_binding":self.config.keybindings.new_tab,"profile":self.config.active_profile,"config_error":self.error},
                 "tabs":self.panes.iter().map(|pane| &pane.label).collect::<Vec<_>>(),
                 "terminal_view":self.panes.get(self.active).map(|pane| {
                     let view=pane.session.snapshot();
@@ -2490,6 +2641,38 @@ pub fn mouse_bytes(button: u8, row: usize, col: usize, pressed: bool, mode: Term
             33 + col.min(222) as u8,
             33 + row.min(222) as u8,
         ]
+    }
+}
+
+fn config_stamp() -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    let bytes = std::fs::read(tide_terminal::config::config_path()).ok()?;
+    let mut hash = std::collections::hash_map::DefaultHasher::new();
+    bytes.hash(&mut hash);
+    Some(hash.finish())
+}
+fn consume_binding(input: &mut egui::InputState, binding: &str) -> bool {
+    let Ok((ctrl, shift, alt, name)) = tide_terminal::config::parse_binding(binding) else {
+        return false;
+    };
+    let Some(key) = Key::from_name(&name) else {
+        return false;
+    };
+    input.consume_key(
+        egui::Modifiers {
+            ctrl,
+            shift,
+            alt,
+            ..Default::default()
+        },
+        key,
+    )
+}
+fn configured_unit(unit: &str) -> DurationUnit {
+    match unit {
+        "minutes" => DurationUnit::Minutes,
+        "hours" => DurationUnit::Hours,
+        _ => DurationUnit::Seconds,
     }
 }
 

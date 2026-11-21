@@ -19,7 +19,7 @@ parser.add_argument('--report',type=Path,required=True)
 args=parser.parse_args()
 results={}
 with tempfile.TemporaryDirectory(prefix='tide-cli-',dir=args.work_dir) as temporary:
-    env=os.environ.copy();env['XDG_DATA_HOME']=temporary;env['TIDE_CONFIG']=str(Path(temporary)/'.tide.toml')
+    env=os.environ.copy();env.pop("TIDE_PROFILE",None);env['XDG_DATA_HOME']=temporary;env['TIDE_CONFIG']=str(Path(temporary)/'.tide.toml')
     binary=str(args.binary)
     command=[binary,'run','--private']
     started=time.monotonic()

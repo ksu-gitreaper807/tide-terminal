@@ -48,8 +48,8 @@ pub struct TimerArgs {
     #[arg(long, conflicts_with = "command")]
     shell: Option<String>,
     /// Cleanup time before SIGKILL, with a unit suffix such as 3s or 500ms.
-    #[arg(long, default_value = "3s", value_parser = super::parse_duration)]
-    grace: Duration,
+    #[arg(long, value_parser = super::parse_duration)]
+    grace: Option<Duration>,
     /// Send SIGINT only; a command that ignores it can keep running.
     #[arg(long)]
     no_force: bool,
@@ -87,13 +87,14 @@ fn minutes(value: &str) -> Result<Duration, String> {
 
 impl TimerArgs {
     pub fn options(self) -> Result<Options> {
+        let config = Config::load()?;
         let mut options = Options::shell("/bin/bash", std::env::current_dir()?);
         options.launch = if let Some(command) = self.command_line {
             anyhow::ensure!(!command.trim().is_empty(), "A command is required");
             let shell = self.shell.or_else(|| std::env::var("TIDE_SHELL").ok());
             let shell = match shell {
                 Some(shell) => shell,
-                None => Config::load()?.shell,
+                None => config.shell.program.clone(),
             };
             Launch::ShellCommand { shell, command }
         } else {
@@ -104,11 +105,13 @@ impl TimerArgs {
             idle: self.idle_seconds.or(self.idle_minutes),
             literal: self.text,
             pattern: self.regex,
-            grace: self.grace,
+            grace: self.grace.unwrap_or(config.stop_grace()?),
             force: !self.no_force,
         };
-        options.private = self.private || std::env::var_os("TIDE_PRIVATE").is_some();
+        options.private =
+            self.private || config.privacy.private || std::env::var_os("TIDE_PRIVATE").is_some();
         options.notifications = self.notify;
+        options.history_lines = config.scrolling.history_lines;
         options.history = Some(super::history_path());
         Ok(options)
     }
@@ -200,7 +203,7 @@ mod tests {
         .unwrap();
         assert_eq!(a.minutes, Some(Duration::from_secs(30)));
         assert_eq!(a.idle_seconds, Some(Duration::from_millis(100)));
-        assert_eq!(a.grace, Duration::from_millis(250));
+        assert_eq!(a.grace, Some(Duration::from_millis(250)));
         assert_eq!(a.text.as_deref(), Some("DONE"));
         let a = parse(&["tide", "timer", "worker", "-idle-m", "2"]).unwrap();
         assert_eq!(a.idle_minutes, Some(Duration::from_secs(120)));

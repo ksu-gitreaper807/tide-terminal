@@ -28,7 +28,7 @@ def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix='tide-package-', dir=args.work_dir) as temp:
         scratch = Path(temp)
-        env = os.environ.copy()
+        env = os.environ.copy(); env.pop("TIDE_PROFILE", None)
         for name in ['TIDE_EXE', 'TIDE_ASSETS_DIR', 'TIDE_APPEND_SOCKET', 'TIDE_PRIVATE', 'TIDE_SHELL', 'TIDE_HISTORY']:
             env.pop(name, None)
         profile = scratch / 'profile.toml'

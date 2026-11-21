@@ -17,3 +17,7 @@
 - **Automated regression library** covering terminal parsing, chunk boundaries, PTY replies, shell integration, prompts, process lifecycle, timers, output capture, appending and real iGPU GUI interaction.
 
 Capture is bounded normalized terminal text, not a byte-exact archival stream. Full-screen applications, explicitly redirected streams and direct controlling-terminal I/O require attention to the capture contract. Current validation reports also identify known upstream terminal-parser deviations instead of claiming full VT conformance.
+
+## Personal configuration
+
+Grouped, annotated TOML in `~/.config/tide/config.toml` with automatic migration and retained legacy files. Named profiles, app shortcuts, canvas themes, typography, cursor, tabs, animations, scrolling, alerts, timer defaults, privacy and initial window size. Safe edits reload live; invalid edits retain working settings. Settings preserves comments and changes only the active profile overrides. `config --check` validates edits; `config --show` displays effective settings. See [config.example.toml](config.example.toml) for the exact supported controls.

@@ -33,6 +33,15 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Commands {
+    /// Show the configuration path, validate it, or print effective settings.
+    Config {
+        #[arg(long, conflicts_with = "show")]
+        check: bool,
+        #[arg(long)]
+        show: bool,
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// Open the native terminal window.
     Gui {
         /// Start in this directory (also supported without the gui subcommand).
@@ -49,6 +58,9 @@ enum Commands {
         gpu: Option<config::GpuMode>,
         #[arg(long)]
         shell: Option<String>,
+        /// Named configuration profile (or TIDE_PROFILE).
+        #[arg(long)]
+        profile: Option<String>,
         #[arg(long)]
         clean: bool,
         #[arg(long)]
@@ -141,6 +153,22 @@ fn run() -> Result<()> {
     )))
     .command
     {
+        Some(Commands::Config {
+            check,
+            show,
+            profile,
+        }) => {
+            if check || show {
+                let settings = config::Config::load_profile(profile.as_deref())?;
+                if show {
+                    println!("{}", toml::to_string_pretty(&settings)?);
+                } else {
+                    println!("Valid configuration: {}", config::config_path().display());
+                }
+            } else {
+                println!("{}", config::config_path().display());
+            }
+        }
         Some(Commands::Run {
             timeout,
             idle,
@@ -212,6 +240,7 @@ fn run() -> Result<()> {
                     execute,
                     gpu,
                     shell,
+                    profile,
                     clean,
                     private,
                     demo,
@@ -227,6 +256,7 @@ fn run() -> Result<()> {
                         execute,
                         gpu,
                         shell,
+                        profile,
                         clean,
                         private,
                         demo,

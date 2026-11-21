@@ -19,7 +19,7 @@ def main():
     args = parser.parse_args()
     results = {}
     with tempfile.TemporaryDirectory(prefix='tide-timer-', dir=args.work_dir) as temporary:
-        env = os.environ.copy()
+        env = os.environ.copy(); env.pop("TIDE_PROFILE", None)
         for key in ('TIDE_SHELL', 'TIDE_PRIVATE', 'TIDE_HISTORY'):
             env.pop(key, None)
         env.update(XDG_CONFIG_HOME=temporary, XDG_DATA_HOME=temporary, TIDE_CONFIG=str(Path(temporary) / ".tide.toml"))

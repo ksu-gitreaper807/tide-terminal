@@ -1,11 +1,83 @@
-# Copy to ~/.tide.toml, or set TIDE_CONFIG to another TOML file.
-# Settings -> Save changes writes the same preferences atomically (mode 0600).
-shell = "/bin/bash"
-gpu = "integrated" # integrated | discrete | auto | software; restart to apply
-font_size = 16.0
-font_file = "" # Optional absolute path to a monospace TTF/OTF face; restart to apply
-opacity = 0.96
-cursor_animation = true
-notifications = true
-private = false
+# Tide configuration — ~/.config/tide/config.toml ($XDG_CONFIG_HOME is respected).
+# Validate: tide-terminal config --check
+# Profiles: tide-terminal gui --profile presentation (or TIDE_PROFILE=presentation)
+# default_profile = "presentation"
+# Safe changes reload within one second while Settings is closed.
+# CLI --shell, --gpu and --private override the selected profile.
+
+[shell] # Applies to new tabs. Blank directory inherits the current directory.
+program = "/bin/bash"
+working_directory = ""
 enhanced_suggestions = true
+
+[appearance]
+# Terminal canvas themes: tide-dark, midnight, light. App controls retain dark styling.
+theme = "tide-dark"
+font_size = 16.0
+line_spacing = 1.0
+opacity = 0.96
+# Fonts require restart. Blank uses Tide's default; font_file takes priority.
+# Font families resolve through fontconfig, retaining bundled symbol fallbacks.
+font_family = ""
+font_file = ""
+[appearance.padding]
+horizontal = 18
+vertical = 6
+
+[cursor]
+# application honors the running program; alternatives: beam, block, underline.
+shape = "application"
+blink = true
+animation = true
+
+[tabs]
+show = "multiple" # multiple, always, never
+# With never, switch using the configured next_tab shortcut.
+title = "last-command" # last-command or shell
+max_title_length = 80
+
+[graphics] # Adapter changes require restarting Tide.
+adapter = "integrated" # integrated, discrete, auto, software
+animations = true
+reduced_motion = false
+animation_duration = 0.18 # seconds, 0 disables tab transitions
+
+[scrolling]
+history_lines = 10000 # new tabs; maximum 1000000
+wheel_multiplier = 1.0
+
+[notifications]
+input_required = true # password, fingerprint and confirmation prompts
+activate_on_click = true
+command_finished = false # opt in; generic text never includes command contents
+minimum_duration = "30s"
+
+[timers]
+default_unit = "seconds" # Run dialog: seconds, minutes, hours; CLI flags stay explicit
+stop_grace = "3s" # Run dialog and T_:; explicit --grace overrides it
+
+[privacy] # New tabs; existing sessions retain their original privacy setting.
+private = false
+
+[window] # Initial size in logical pixels; restart required.
+width = 1120.0
+height = 740.0
+
+[keybindings] # Ctrl or Alt required; use "" to disable an action.
+new_tab = "Ctrl+Shift+T"
+run_command = "Ctrl+Shift+R"
+append = "Ctrl+Shift+A"
+history = "Ctrl+Shift+H"
+settings = "Ctrl+Shift+Comma"
+close_tab = "Ctrl+Shift+W"
+next_tab = "Ctrl+Tab"
+zoom_in = "Ctrl+Plus"
+
+# Profiles inherit base settings. Saving in Settings updates only changed overrides.
+[profiles.presentation.appearance]
+font_size = 22.0
+opacity = 1.0
+[profiles.presentation.graphics]
+reduced_motion = true
+[profiles.private.privacy]
+private = true

@@ -49,14 +49,18 @@ appends captured output to a file. Use 1>> or 2>> to select stdout or stderr
 when separate capture is available.
 .SH FILES
 .TP
-.I ~/.tide.toml
-Preferences: renderer, shell, font, opacity, alerts and privacy.
+.I ~/.config/tide/config.toml
+Grouped settings, profiles, appearance, keyboard shortcuts, shell, alerts and timers.
+XDG_CONFIG_HOME overrides the base directory. The previous ~/.tide.toml migrates
+automatically and is retained for rollback.
 .TP
 .I ~/.local/share/tide-terminal/history.sqlite3
 Command history, unless XDG_DATA_HOME selects another data directory.
 .SH ENVIRONMENT
 .B TIDE_CONFIG
-selects an alternate preferences file.
+selects an alternate preferences file. TIDE_PROFILE selects a named profile;
+gui --profile takes precedence. Safe changes reload while Settings is closed.
+Use config --check to validate, config --show to inspect effective settings.
 .SH EXAMPLES
 .nf
 tide-terminal

@@ -34,11 +34,18 @@ impl Dimensions for Size {
 
 pub type Core = Term<Listener>;
 pub fn create(rows: usize, cols: usize) -> (Core, Receiver<Event>) {
+    create_with_history(rows, cols, 10_000)
+}
+pub fn create_with_history(
+    rows: usize,
+    cols: usize,
+    history_lines: usize,
+) -> (Core, Receiver<Event>) {
     let (tx, rx) = bounded(128);
     (
         Term::new(
             term::Config {
-                scrolling_history: 10_000,
+                scrolling_history: history_lines.min(1_000_000),
                 osc52: term::Osc52::Disabled,
                 ..Default::default()
             },
@@ -119,6 +126,14 @@ pub fn color(c: Color) -> [u8; 3] {
     }
 }
 pub fn snapshot(term: &Core) -> View {
+    snapshot_with_colors(term, [213, 220, 229], [15, 20, 28])
+}
+pub fn snapshot_with_colors(term: &Core, foreground: [u8; 3], background: [u8; 3]) -> View {
+    let resolve = |value| match value {
+        Color::Named(NamedColor::Foreground | NamedColor::BrightForeground) => foreground,
+        Color::Named(NamedColor::Background) => background,
+        _ => color(value),
+    };
     let offset = term.grid().display_offset();
     let mut cells = Vec::new();
     for cell in term.grid().display_iter() {
@@ -132,15 +147,15 @@ pub fn snapshot(term: &Core) -> View {
         {
             continue;
         }
-        let mut fg = color(cell.fg);
+        let mut fg = resolve(cell.fg);
         let mut bg = if cell.bg == Color::Named(NamedColor::Background) {
             None
         } else {
-            Some(color(cell.bg))
+            Some(resolve(cell.bg))
         };
         if cell.flags.contains(Flags::INVERSE) {
             let old = fg;
-            fg = bg.unwrap_or([15, 20, 28]);
+            fg = bg.unwrap_or(background);
             bg = Some(old);
         }
         if cell.flags.contains(Flags::DIM) {
@@ -234,6 +249,27 @@ pub fn selected(term: &Core, start: (usize, usize), end: (usize, usize)) -> Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn themes_preserve_explicit_colors_and_resolve_inverse_defaults() {
+        let (mut term, _) = create(4, 20);
+        let mut parser: alacritty_terminal::vte::ansi::Processor =
+            alacritty_terminal::vte::ansi::Processor::new();
+        parser.advance(&mut term, b"A\x1b[38;2;213;220;229mB\x1b[0;7mC");
+        let view = snapshot_with_colors(&term, [30, 38, 49], [246, 248, 250]);
+        assert_eq!(view.cells[0].fg, [30, 38, 49]);
+        assert_eq!(view.cells[1].fg, [213, 220, 229]);
+        assert_eq!(view.cells[2].fg, [246, 248, 250]);
+        assert_eq!(view.cells[2].bg, Some([30, 38, 49]));
+    }
+    #[test]
+    fn configured_history_capacity_bounds_retained_output() {
+        use alacritty_terminal::grid::Dimensions;
+        let (mut term, _) = create_with_history(4, 20, 3);
+        let mut parser: alacritty_terminal::vte::ansi::Processor =
+            alacritty_terminal::vte::ansi::Processor::new();
+        parser.advance(&mut term, b"1\r\n2\r\n3\r\n4\r\n5\r\n6\r\n7\r\n8\r\n");
+        assert_eq!(term.grid().history_size(), 3);
+    }
     #[test]
     fn vt_resize_alt_screen_and_wide_cells() {
         let (mut t, _) = create(5, 20);

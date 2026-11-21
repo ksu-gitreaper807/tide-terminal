@@ -27,8 +27,24 @@ pub fn validate_terminal_font(path: &str) -> anyhow::Result<Option<Vec<u8>>> {
     Ok(Some(bytes))
 }
 
+pub fn validate_preferences(file: &str, family: &str) -> anyhow::Result<Option<Vec<u8>>> {
+    if !file.trim().is_empty() || family.trim().is_empty() {
+        return validate_terminal_font(file);
+    }
+    let output = std::process::Command::new("fc-match")
+        .args(["-f", "%{file}", family])
+        .output()?;
+    anyhow::ensure!(
+        output.status.success(),
+        "Could not resolve font family {family}"
+    );
+    validate_terminal_font(std::str::from_utf8(&output.stdout)?.trim())
+}
 pub fn apply_with_font(ctx: &egui::Context, font_file: &str) -> anyhow::Result<()> {
-    let custom = validate_terminal_font(font_file)?;
+    apply_preferences(ctx, font_file, "")
+}
+pub fn apply_preferences(ctx: &egui::Context, font_file: &str, family: &str) -> anyhow::Result<()> {
+    let custom = validate_preferences(font_file, family)?;
     // Terminal control punctuation must not trigger egui's global Ctrl+- zoom.
     ctx.options_mut(|options| options.zoom_with_keyboard = false);
     let mut fonts = egui::FontDefinitions::default();
