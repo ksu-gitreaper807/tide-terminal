@@ -95,6 +95,7 @@ group!(Keybindings {
     history: String = "Ctrl+Shift+H".into(),
     settings: String = "Ctrl+Shift+Comma".into(),
     close_tab: String = "Ctrl+Shift+W".into(),
+    close_window: String = "Ctrl+Shift+Q".into(),
     next_tab: String = "Ctrl+Tab".into(),
     zoom_in: String = "Ctrl+Plus".into()
 });

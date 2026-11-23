@@ -70,6 +70,7 @@ append = "Ctrl+Shift+A"
 history = "Ctrl+Shift+H"
 settings = "Ctrl+Shift+Comma"
 close_tab = "Ctrl+Shift+W"
+close_window = "Ctrl+Shift+Q" # All tabs; asks before stopping running processes.
 next_tab = "Ctrl+Tab"
 zoom_in = "Ctrl+Plus"
 

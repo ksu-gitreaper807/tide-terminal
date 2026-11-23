@@ -42,6 +42,7 @@ Each tab shows the last command launched in that terminal, including its argumen
 | Ctrl+Shift+T | Open another shell tab |
 | Ctrl+Tab | Switch tabs |
 | Ctrl+Shift+W | Close the current tab and its session |
+| Ctrl+Shift+Q | Close the whole window and all its tabs; confirm if processes are running |
 | Ctrl+Shift+H | Search shared command history |
 | Ctrl+Shift+R | Open Run command |
 | Ctrl+Shift+A | Append an action to the selected tab's current or most recent command |

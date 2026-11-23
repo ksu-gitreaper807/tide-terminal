@@ -867,19 +867,25 @@ impl App {
             }
             return;
         }
-        let (new, run, history, settings, close, next, zoom_in, append) = ctx.input_mut(|i| {
-            let keys = &self.config.keybindings;
-            (
-                consume_binding(i, &keys.new_tab),
-                consume_binding(i, &keys.run_command),
-                consume_binding(i, &keys.history),
-                consume_binding(i, &keys.settings),
-                consume_binding(i, &keys.close_tab),
-                consume_binding(i, &keys.next_tab),
-                consume_binding(i, &keys.zoom_in),
-                consume_binding(i, &keys.append),
-            )
-        });
+        let (new, run, history, settings, close, next, zoom_in, append, quit) =
+            ctx.input_mut(|i| {
+                let keys = &self.config.keybindings;
+                (
+                    consume_binding(i, &keys.new_tab),
+                    consume_binding(i, &keys.run_command),
+                    consume_binding(i, &keys.history),
+                    consume_binding(i, &keys.settings),
+                    consume_binding(i, &keys.close_tab),
+                    consume_binding(i, &keys.next_tab),
+                    consume_binding(i, &keys.zoom_in),
+                    consume_binding(i, &keys.append),
+                    consume_binding(i, &keys.close_window),
+                )
+            });
+        if quit {
+            self.request_close(CloseTarget::Window, ctx);
+            return;
+        }
         if new {
             self.open_shell(ctx);
         }

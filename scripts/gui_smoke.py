@@ -552,11 +552,20 @@ def main():
             index = start_run('sleep 60')
             started = wait(lambda: event_after(index, lambda e:e['event']=='started'), 'window shutdown fixture starts')
             pid = started['event']['pid']
-            request_window_close()
+            assert len(ui_state()['tabs']) >= 2, 'whole-window shortcut fixture needs multiple tabs'
+            count = len(ui_state()['tabs'])
+            key('q', ('Control_L', 'Shift_L'))
+            wait(lambda: 'close_confirm' in ui_state().get('ui', {}), 'quit shortcut protects running processes')
+            key('Escape')
+            wait(lambda: 'close_confirm' not in ui_state().get('ui', {}), 'quit cancellation keeps window open')
+            assert process.poll() is None and len(ui_state()['tabs']) == count and Path(f'/proc/{pid}').exists()
+            results['gui_quit_shortcut_cancel_keeps_tabs_and_process'] = 'passed'
+            key('q', ('Control_L', 'Shift_L'))
             click('close_confirm')
             process.wait(timeout=8)
             assert not Path(f'/proc/{pid}').exists(), 'confirmed window close did not reap direct child'
             results['gui_confirmed_window_close_reaps_session'] = 'passed'
+            results['gui_quit_shortcut_closes_entire_window'] = 'passed'
 
         def check_tab_titles():
             first = ui_state()['active_tab']
@@ -949,8 +958,10 @@ def main():
                 return int(next(line for line in lines if line.startswith('Pss:')).split()[1])
             def cycle():
                 for expected in range(2,9):
+                    opened=len(records())
                     key('t',('Control_L','Shift_L'))
                     wait(lambda:len(ui_state()['tabs'])==expected,'memory fixture tab opens')
+                    wait(lambda:any(r.get('pane')==expected-1 and r.get('event',{}).get('event')=='prompt' for r in records()[opened:]),'memory fixture shell ready')
                     index=len(records())
                     text('seq 1 6000\n',interval=.01)
                     wait(lambda:event_after(index,lambda e:e['event']=='command_ended' and e['code']==0),'memory fixture output completes')
