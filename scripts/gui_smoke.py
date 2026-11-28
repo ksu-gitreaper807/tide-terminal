@@ -729,6 +729,21 @@ def main():
                 screenshot(name+'.png');copied(sample,name+'.txt')
             results['gui_fast_forward_reverse_drag_and_clipboard']='passed'
 
+            for word_sample,word,start in [('./logs/build-error.txt:(retry)  tail','./logs/build-error.txt:(retry)',0),
+                                      ('left\u2003café.txt\u00a0right','café.txt',5)]:
+                encoded=''.join(f'\\x{byte:02x}' for byte in word_sample.encode())
+                command(clear+encoded+"\\r\\n'")
+                x,y=cell_position(0,start)
+                inject(d,X.MotionNotify,x=x,y=y);d.sync();time.sleep(.1)
+                for _ in range(2):
+                    inject(d,X.ButtonPress,1);d.sync();time.sleep(.06)
+                    inject(d,X.ButtonRelease,1);d.sync();time.sleep(.08)
+                expected=[[0,start],[0,start+len(word)-1]]
+                wait(lambda:ui_state()['terminal_view']['selection']==expected,'double-click selects entire whitespace-delimited word')
+                copied(word,'double-click-word.txt')
+                (scratch/'double-click-word.txt').unlink()
+            results['gui_double_click_whitespace_word_and_clipboard']='passed'
+
             for name,sgr in [('truecolor','48;2;20;30;40'),('indexed','48;5;24'),('inverse','7')]:
                 command(clear+'\\033['+sgr+'m'+sample+"\\033[0m\\r\\n'")
                 drag((0,0),(0,len(sample)-1))

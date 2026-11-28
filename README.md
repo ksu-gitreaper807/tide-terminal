@@ -35,7 +35,7 @@ Closing a busy tab or window opens a confirmation listing its processes. **Keep 
 
 Each tab shows the last command launched in that terminal, including its arguments, and retains the title after success, failure or interruption. A fresh shell starts with its shell name. Long titles are shortened in the tab; hover to read the full command and working directory. Commands remain isolated to their own tabs.
 
-**Using the window.** Type directly into the terminal. Right arrow accepts an inline suggestion; Tab invokes the shell's own completion. Drag to select text and use Ctrl+Shift+C to copy. Ctrl+Shift+V pastes, with bracketed paste when the active program supports it. Programs requesting mouse reporting receive terminal mouse events; hold Shift to select terminal text instead.
+**Using the window.** Type directly into the terminal. Right arrow accepts an inline suggestion; Tab invokes the shell's own completion. Drag to select text, double-click to select a whole whitespace-delimited word (including punctuation), and use Ctrl+Shift+C to copy. Ctrl+Shift+V pastes, with bracketed paste when the active program supports it. Programs requesting mouse reporting receive terminal mouse events; hold Shift to select terminal text instead.
 
 | Shortcut | Action |
 |---|---|

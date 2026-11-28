@@ -565,6 +565,9 @@ impl Session {
     pub fn begin_selection(&self, point: (usize, usize)) {
         terminal::begin_selection(&mut self.state.lock().unwrap().terminal, point);
     }
+    pub fn select_word(&self, point: (usize, usize)) {
+        terminal::select_word(&mut self.state.lock().unwrap().terminal, point);
+    }
     pub fn extend_selection(&self, point: (usize, usize)) {
         terminal::extend_selection(&mut self.state.lock().unwrap().terminal, point);
     }

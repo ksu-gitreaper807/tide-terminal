@@ -47,6 +47,8 @@ pub fn create_with_history(
             term::Config {
                 scrolling_history: history_lines.min(1_000_000),
                 osc52: term::Osc52::Disabled,
+                // Unicode whitespace; punctuation stays part of a double-clicked word.
+                semantic_escape_chars: "\t\n\u{b}\u{c}\r \u{85}\u{a0}\u{1680}\u{2000}\u{2001}\u{2002}\u{2003}\u{2004}\u{2005}\u{2006}\u{2007}\u{2008}\u{2009}\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}".into(),
                 ..Default::default()
             },
             &Size { rows, cols },
@@ -220,6 +222,26 @@ pub fn begin_selection(term: &mut Core, visible: (usize, usize)) {
     selection.include_all();
     term.selection = Some(selection);
 }
+/// Select a whitespace-delimited token without semantic bracket matching.
+pub fn select_word(term: &mut Core, visible: (usize, usize)) {
+    let mut point = selection_point(term, visible);
+    let flags = term.grid()[point].flags;
+    if flags.contains(Flags::WIDE_CHAR_SPACER) {
+        point.column -= 1;
+    } else if flags.contains(Flags::LEADING_WIDE_CHAR_SPACER) {
+        point.line += 1;
+        point.column = Column(0);
+    }
+    if term.grid()[point].c.is_whitespace() {
+        begin_selection(term, visible);
+        return;
+    }
+    let start = term.semantic_search_left(point);
+    let end = term.semantic_search_right(point);
+    let mut selection = Selection::new(SelectionType::Simple, start, Side::Left);
+    selection.update(end, Side::Right);
+    term.selection = Some(selection);
+}
 pub fn extend_selection(term: &mut Core, visible: (usize, usize)) {
     let point = selection_point(term, visible);
     if let Some(selection) = &mut term.selection {
@@ -249,6 +271,61 @@ pub fn selected(term: &Core, start: (usize, usize), end: (usize, usize)) -> Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn double_click_words_keep_punctuation_and_stop_at_unicode_whitespace() {
+        for (text, word, cells) in [
+            (
+                "before  ./logs/build-error.txt:(retry)  after",
+                "./logs/build-error.txt:(retry)",
+                8..38,
+            ),
+            ("left\u{2003}café.txt\u{a0}right", "café.txt", 5..13),
+            ("x 文件.txt z", "文件.txt", 2..10),
+            ("x cafe\u{301}.txt z", "cafe\u{301}.txt", 2..10),
+            ("left\tword-name\tright", "word-name", 8..17),
+        ] {
+            let (mut term, _) = create(4, 80);
+            let mut parser: alacritty_terminal::vte::ansi::Processor =
+                alacritty_terminal::vte::ansi::Processor::new();
+            parser.advance(&mut term, text.as_bytes());
+            // Include punctuation and both halves of wide characters.
+            for col in cells {
+                select_word(&mut term, (0, col));
+                assert_eq!(
+                    term.selection_to_string().as_deref(),
+                    Some(word),
+                    "{text:?} at {col}"
+                );
+            }
+        }
+        let (mut term, _) = create(2, 20);
+        let mut parser: alacritty_terminal::vte::ansi::Processor =
+            alacritty_terminal::vte::ansi::Processor::new();
+        parser.advance(&mut term, b"left  right");
+        select_word(&mut term, (0, 5));
+        let range = term.selection.as_ref().unwrap().to_range(&term).unwrap();
+        assert_eq!(range.start, range.end);
+    }
+
+    #[test]
+    fn double_click_words_follow_wraps_and_scrolled_content_but_not_hard_newlines() {
+        let (mut term, _) = create(4, 8);
+        let mut parser: alacritty_terminal::vte::ansi::Processor =
+            alacritty_terminal::vte::ansi::Processor::new();
+        parser.advance(&mut term, b"abc/def-ghij ");
+        select_word(&mut term, (1, 1));
+        assert_eq!(term.selection_to_string().as_deref(), Some("abc/def-ghij"));
+        let (mut term, _) = create(2, 12);
+        let mut parser: alacritty_terminal::vte::ansi::Processor =
+            alacritty_terminal::vte::ansi::Processor::new();
+        parser.advance(&mut term, b"old/path\r\nnext\r\nlast");
+        term.scroll_display(Scroll::Top);
+        select_word(&mut term, (0, 4));
+        assert_eq!(term.selection_to_string().as_deref(), Some("old/path"));
+        select_word(&mut term, (1, 2));
+        assert_eq!(term.selection_to_string().as_deref(), Some("next"));
+    }
     #[test]
     fn themes_preserve_explicit_colors_and_resolve_inverse_defaults() {
         let (mut term, _) = create(4, 20);

@@ -1878,7 +1878,15 @@ impl App {
                     if !modal {
                         focus_terminal(ctx, response.id);
                     }
-                    p.session.clear_selection();
+                    if !modal
+                        && !mouse_mode
+                        && response.double_clicked()
+                        && let Some(pos) = response.interact_pointer_pos()
+                    {
+                        p.session.select_word(point(pos));
+                    } else {
+                        p.session.clear_selection();
+                    }
                     self.last_interaction = Instant::now();
                 }
                 if !modal
